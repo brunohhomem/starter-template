@@ -24,15 +24,7 @@ const metricExceptions = [
 
 const baseConfig = tseslint.config(
   {
-    ignores: [
-      '**/dist/**',
-      '**/.next/**',
-      '**/coverage/**',
-      '**/.turbo/**',
-      '**/next-env.d.ts',
-      // O teste da config grava arquivos aqui enquanto o turbo pode lintar ao mesmo tempo.
-      '**/lint-fixtures/**',
-    ],
+    ignores: ['**/dist/**', '**/.next/**', '**/coverage/**', '**/.turbo/**', '**/next-env.d.ts'],
   },
   {
     files: ['**/*.{js,mjs,cjs,ts,tsx}'],

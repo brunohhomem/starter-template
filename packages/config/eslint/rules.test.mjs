@@ -4,22 +4,23 @@ import path from 'node:path';
 import test from 'node:test';
 import { ESLint } from 'eslint';
 
-const repoRoot = path.resolve(import.meta.dirname, '../../..');
-const fixtureRoots = [
-  path.join(repoRoot, 'apps/api/src/lint-fixtures'),
-  path.join(repoRoot, 'apps/web/src/lint-fixtures'),
-];
+const fixtureRoot = path.resolve(import.meta.dirname, 'fixtures');
 
 const eslint = new ESLint({
-  cwd: repoRoot,
+  cwd: fixtureRoot,
   concurrency: 'off',
   globInputPaths: false,
   ignore: false,
-  overrideConfigFile: path.join(repoRoot, 'eslint.config.mjs'),
+  overrideConfigFile: path.join(fixtureRoot, 'eslint.config.mjs'),
 });
 
 function writeFixture(relativePath, source) {
-  const absolutePath = path.join(repoRoot, relativePath);
+  const absolutePath = path.resolve(fixtureRoot, relativePath);
+  const relativeToFixture = path.relative(fixtureRoot, absolutePath);
+  if (relativeToFixture.startsWith('..') || path.isAbsolute(relativeToFixture)) {
+    throw new Error(`O teste só grava dentro de packages/config: ${relativePath}`);
+  }
+
   fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
   fs.writeFileSync(absolutePath, source, 'utf8');
   return absolutePath;
@@ -80,14 +81,18 @@ function disableComment(suffix) {
 }
 
 test.after(() => {
-  for (const fixtureRoot of fixtureRoots) {
-    fs.rmSync(fixtureRoot, { recursive: true, force: true });
-  }
+  fs.rmSync(path.join(fixtureRoot, 'apps'), { recursive: true, force: true });
+});
+
+test('fixture não sai de packages/config', () => {
+  assert.throws(() => {
+    writeFixture('../../../../apps/api/src/escaped.ts', 'export const value = 1;\n');
+  }, /packages\/config/);
 });
 
 test('any é erro', async () => {
   await expectRule(
-    'apps/api/src/lint-fixtures/explicit-any.ts',
+    'apps/api/src/explicit-any.ts',
     'export const value: any = 1;\n',
     '@typescript-eslint/no-explicit-any',
   );
@@ -95,7 +100,7 @@ test('any é erro', async () => {
 
 test('else depois de return é erro', async () => {
   await expectRule(
-    'apps/api/src/lint-fixtures/else-return.ts',
+    'apps/api/src/else-return.ts',
     [
       'export function readValue(value: number): number {',
       '  if (value > 0) {',
@@ -112,7 +117,7 @@ test('else depois de return é erro', async () => {
 
 test('promise flutuante é erro', async () => {
   await expectRule(
-    'apps/api/src/lint-fixtures/floating-promise.ts',
+    'apps/api/src/floating-promise.ts',
     [
       'async function loadValue(): Promise<void> {',
       '  return undefined;',
@@ -128,21 +133,17 @@ test('promise flutuante é erro', async () => {
 });
 
 test('nome de uma letra é erro', async () => {
-  await expectRule(
-    'apps/api/src/lint-fixtures/short-name.ts',
-    'export const x = 1;\n',
-    'id-length',
-  );
+  await expectRule('apps/api/src/short-name.ts', 'export const x = 1;\n', 'id-length');
 });
 
 test('controller não importa drizzle-orm nem repository', async () => {
   await expectRule(
-    'apps/api/src/lint-fixtures/orders.controller.ts',
+    'apps/api/src/orders.controller.ts',
     "import { eq } from 'drizzle-orm';\n\nexport const filter = eq;\n",
     'no-restricted-imports',
   );
   await expectRule(
-    'apps/api/src/lint-fixtures/people.controller.ts',
+    'apps/api/src/people.controller.ts',
     "import { PeopleRepository } from './people.repository';\n\nexport const repository = PeopleRepository;\n",
     'no-restricted-imports',
   );
@@ -150,12 +151,12 @@ test('controller não importa drizzle-orm nem repository', async () => {
 
 test('service não importa drizzle-orm e pode importar repository', async () => {
   await expectRule(
-    'apps/api/src/lint-fixtures/orders.service.ts',
+    'apps/api/src/orders.service.ts',
     "import { sql } from 'drizzle-orm/sql';\n\nexport const query = sql;\n",
     'no-restricted-imports',
   );
   await expectClean(
-    'apps/api/src/lint-fixtures/people.service.ts',
+    'apps/api/src/people.service.ts',
     "import { PeopleRepository } from './people.repository';\n\nexport const repository = PeopleRepository;\n",
   );
 });
@@ -163,8 +164,8 @@ test('service não importa drizzle-orm e pode importar repository', async () => 
 test("'use client' em page.tsx e em arquivo sem .client é erro", async () => {
   const source =
     "'use client';\n\nexport default function SamplePage(): null {\n  return null;\n}\n";
-  await expectRule('apps/web/src/lint-fixtures/page.tsx', source, 'no-restricted-syntax');
-  await expectRule('apps/web/src/lint-fixtures/plain-widget.tsx', source, 'no-restricted-syntax');
+  await expectRule('apps/web/src/page.tsx', source, 'no-restricted-syntax');
+  await expectRule('apps/web/src/plain-widget.tsx', source, 'no-restricted-syntax');
 });
 
 test('hook fora de arquivo client é erro e dentro é permitido', async () => {
@@ -178,19 +179,19 @@ test('hook fora de arquivo client é erro e dentro é permitido', async () => {
     '}',
     '',
   ].join('\n');
-  await expectRule('apps/web/src/lint-fixtures/widget.tsx', source, 'no-restricted-syntax');
-  await expectClean('apps/web/src/lint-fixtures/hooks/use-sample.tsx', source);
-  await expectClean('apps/web/src/lint-fixtures/sample.client.tsx', `'use client';\n\n${source}`);
+  await expectRule('apps/web/src/widget.tsx', source, 'no-restricted-syntax');
+  await expectClean('apps/web/src/hooks/use-sample.tsx', source);
+  await expectClean('apps/web/src/sample.client.tsx', `'use client';\n\n${source}`);
 });
 
 test('eslint-disable sem descrição é erro', async () => {
   await expectRule(
-    'apps/api/src/lint-fixtures/disable-comment.ts',
+    'apps/api/src/disable-comment.ts',
     `// ${disableComment('-next-line id-length')}\nexport const value = 1;\n`,
     'eslint-comments/require-description',
   );
   await expectRule(
-    'apps/api/src/lint-fixtures/unlimited-disable.ts',
+    'apps/api/src/unlimited-disable.ts',
     `/* ${disableComment('')} */\nexport const value = 1;\n`,
     'eslint-comments/no-unlimited-disable',
   );
@@ -198,7 +199,7 @@ test('eslint-disable sem descrição é erro', async () => {
 
 test('métrica acima do limite é warning', async () => {
   await expectWarning(
-    'apps/api/src/lint-fixtures/read-total.ts',
+    'apps/api/src/read-total.ts',
     [
       'export function readTotal(',
       '  first: number,',
@@ -217,7 +218,7 @@ test('métrica acima do limite é warning', async () => {
 
 test('arquivo válido passa limpo', async () => {
   await expectClean(
-    'apps/api/src/lint-fixtures/read-value.ts',
+    'apps/api/src/read-value.ts',
     [
       'export function readValue(value: number): number {',
       '  if (value <= 0) {',
@@ -233,15 +234,11 @@ test('arquivo válido passa limpo', async () => {
 
 test('filename-case aceita segmentos do Next e rejeita camelCase', async () => {
   const page = 'export default function SamplePage(): null {\n  return null;\n}\n';
-  await expectClean('apps/web/src/lint-fixtures/[id]/page.tsx', page);
-  await expectClean('apps/web/src/lint-fixtures/[userId]/page.tsx', page);
+  await expectClean('apps/web/src/[id]/page.tsx', page);
+  await expectClean('apps/web/src/[userId]/page.tsx', page);
   await expectClean(
-    'apps/web/src/lint-fixtures/SampleName.d.ts',
+    'apps/web/src/SampleName.d.ts',
     'export type SampleName = {\n  value: number;\n};\n',
   );
-  await expectRule(
-    'apps/web/src/lint-fixtures/badName.ts',
-    'export const value = 1;\n',
-    'unicorn/filename-case',
-  );
+  await expectRule('apps/web/src/badName.ts', 'export const value = 1;\n', 'unicorn/filename-case');
 });
