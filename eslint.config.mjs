@@ -42,6 +42,7 @@ for (const config of [...baseConfig, ...nestConfig, ...nextConfig]) {
 
 export default [
   ...ignoreBlocks,
+  ...scope(baseConfig, ''),
   ...scope(baseConfig, 'packages/shared/'),
   ...scope(baseConfig, 'packages/config/'),
   ...scope(nestConfig, 'apps/api/'),

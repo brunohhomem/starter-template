@@ -40,7 +40,11 @@ const webBoundaries = [
   },
   {
     files: [
-      group('src/**/hooks/**/*.ts', ['!src/**/*.tsx', '!src/**/*.client.ts', '!src/**/components/ui/**']),
+      group('src/**/hooks/**/*.ts', [
+        '!src/**/*.tsx',
+        '!src/**/*.client.ts',
+        '!src/**/components/ui/**',
+      ]),
       group('src/**/hooks/**/*.tsx', ['!src/**/*.client.tsx', '!src/**/components/ui/**']),
       group('apps/web/src/**/hooks/**/*.ts', [
         '!apps/web/src/**/*.tsx',

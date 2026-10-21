@@ -7,6 +7,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ### Adicionado
 
 - O preset de ESLint aplica as regras da seção 3.2 do ADR. `unicorn/filename-case` ignora segmentos `[...]` do Next e arquivos `.d.ts`.
+- Hooks de commit com `husky` 9.1.7, `lint-staged` 17.6.0, `prettier` 3.9.10 e `@commitlint/cli` / `@commitlint/config-conventional` 21.2.4.
 
 ### Alterado
 

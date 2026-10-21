@@ -160,7 +160,8 @@ test('service não importa drizzle-orm e pode importar repository', async () => 
 });
 
 test("'use client' em page.tsx e em arquivo sem .client é erro", async () => {
-  const source = "'use client';\n\nexport default function SamplePage(): null {\n  return null;\n}\n";
+  const source =
+    "'use client';\n\nexport default function SamplePage(): null {\n  return null;\n}\n";
   await expectRule('apps/web/src/lint-fixtures/page.tsx', source, 'no-restricted-syntax');
   await expectRule('apps/web/src/lint-fixtures/plain-widget.tsx', source, 'no-restricted-syntax');
 });
@@ -178,10 +179,7 @@ test('hook fora de arquivo client é erro e dentro é permitido', async () => {
   ].join('\n');
   await expectRule('apps/web/src/lint-fixtures/widget.tsx', source, 'no-restricted-syntax');
   await expectClean('apps/web/src/lint-fixtures/hooks/use-sample.tsx', source);
-  await expectClean(
-    'apps/web/src/lint-fixtures/sample.client.tsx',
-    `'use client';\n\n${source}`,
-  );
+  await expectClean('apps/web/src/lint-fixtures/sample.client.tsx', `'use client';\n\n${source}`);
 });
 
 test('eslint-disable sem descrição é erro', async () => {
