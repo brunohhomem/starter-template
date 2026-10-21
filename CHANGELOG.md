@@ -6,8 +6,17 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Adicionado
 
+- Fundação do monorepo: normalização LF, Turborepo, presets de TypeScript e ESLint, `@starter/shared`, esqueletos da API e do web, hooks de commit, instruções para agentes e CI.
 - O preset de ESLint aplica as regras da seção 3.2 do ADR. `unicorn/filename-case` ignora segmentos `[...]` do Next e arquivos `.d.ts`.
 - Hooks de commit com `husky` 9.1.7, `lint-staged` 17.6.0, `prettier` 3.9.10 e `@commitlint/cli` / `@commitlint/config-conventional` 21.2.4.
+- Node 24.22.1 e pnpm 12.14.0
+- TypeScript 6.0.3, `typescript-eslint` 8.72.0 e `ts-jest` 29.4.15
+- ESLint 9.39.5, `eslint-plugin-unicorn` 65.0.1, `eslint-config-next` 16.4.2, `eslint-plugin-react-hooks` 7.1.1 e `@eslint-community/eslint-plugin-eslint-comments` 4.8.1
+- Next 16.4.2, React 19.3.1, React DOM 19.3.1 e `@types/react` 19.3.0
+- NestJS 12.2.0 (`common`, `core`, `platform-express`), `@nestjs/cli` 12.0.10, `reflect-metadata` 0.2.2 e `rxjs` 7.8.2
+- Jest 30.5.2, `@jest/globals` 30.5.2, Vitest 5.0.5, `@testing-library/react` 16.3.3, `jsdom` 30.1.3 e zod 4.6.7
+- Turborepo 2.11.10, Prettier 3.9.10, Husky 9.1.7 e lint-staged 17.6.0
+- GitHub Actions nas majors `actions/checkout` v7, `actions/setup-node` v7, `actions/cache` v6 e `pnpm/action-setup` v6
 
 ### Alterado
 
