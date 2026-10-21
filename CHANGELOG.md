@@ -4,6 +4,10 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Não publicado]
 
+### Adicionado
+
+- O preset de ESLint aplica as regras da seção 3.2 do ADR. `unicorn/filename-case` ignora segmentos `[...]` do Next e arquivos `.d.ts`.
+
 ### Alterado
 
 - O ESLint fica em 9.39.5, com `eslint-plugin-unicorn` 65.0.1, para carregar o `eslint-config-next` 16.4.2 completo. A estável mais recente do ESLint é a 10.13.0 e a do Unicorn é a 78.0.0; os plugins trazidos pelo `eslint-config-next` só declaram suporte até o ESLint 9. Gatilho de revisão: subir para ESLint 10 quando o `eslint-config-next` aceitar.

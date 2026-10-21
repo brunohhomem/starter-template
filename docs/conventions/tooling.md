@@ -12,6 +12,16 @@ O preset `next` importa o `eslint-config-next` completo. O parser desse pacote c
 
 O `next build` instala `@types/react` quando o projeto TypeScript ainda não o tem. A versão gravada é a **19.3.0**. Sem esse pacote, o JSX não tem tipos.
 
+As regras de fluxo, nomes, async e métricas ficam no preset `base`. `no-floating-promises` e `no-misused-promises` usam `projectService`. O `next-env.d.ts` fica fora do lint: é gerado pelo Next e aponta para `.next`.
+
+`unicorn/filename-case` exige kebab-case e ignora dois padrões do Next: o segmento dinâmico `[...]` (como `[id]` e `[userId]`) e qualquer arquivo `.d.ts`. Sem o primeiro, um diretório `[userId]` falha; sem o segundo, um `SampleName.d.ts` falha.
+
+O ADR pede `@typescript-eslint/naming-convention` sem listar os formatos. Os formatos usados são camelCase no padrão, PascalCase em tipos, funções e imports (componente React e o valor `Role`), e `UPPER_CASE` em constantes. O nome `_` fica livre, na mesma exceção do `id-length`.
+
+No flat config, um padrão `!` solto dentro de `files` não exclui os outros: cada item é um OR. A exclusão de `*.client`, `hooks/` e `components/ui` entra como array interno (AND) para os blocos de `'use client'` e de hooks não se substituírem.
+
+O plugin do Next procura `pages` ou `app` a partir do diretório de trabalho, e o glob que ele usa ignora o `cwd` do ESLint. O preset aponta `rootDir` para o caminho absoluto de `apps/web`, para o lint do pacote e o lint a partir da raiz acharem `src/app`.
+
 ## TypeScript
 
 O TypeScript do monorepo é o **6.0.3**. A estável mais recente é a 7.0.2, que o `typescript-eslint` 8.72.0 (`typescript` `<6.1.0`) e o `ts-jest` 29 (`typescript` `<7`) ainda não aceitam.
