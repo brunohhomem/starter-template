@@ -1,0 +1,6 @@
+---
+globs: apps/web/**
+alwaysApply: false
+---
+
+Leia `docs/conventions/frontend.md` e `DESIGN.md` antes de alterar o web.
