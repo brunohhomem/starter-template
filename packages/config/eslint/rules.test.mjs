@@ -242,3 +242,30 @@ test('filename-case aceita segmentos do Next e rejeita camelCase', async () => {
   );
   await expectRule('apps/web/src/badName.ts', 'export const value = 1;\n', 'unicorn/filename-case');
 });
+
+test('process.env proibido fora de config e scripts', async () => {
+  await expectRule(
+    'apps/api/src/some-service.ts',
+    'export const value = process.env.SOME_VAR;\n',
+    'no-restricted-syntax',
+  );
+  await expectClean(
+    'apps/api/src/config/env-loader.ts',
+    'export const value = process.env.SOME_VAR;\n',
+  );
+  await expectClean(
+    'packages/scripts/src/keys-generate.ts',
+    'export const value = process.env.SOME_VAR;\n',
+  );
+});
+
+test('process.env permitido em config e scripts', async () => {
+  await expectClean(
+    'apps/api/src/config/load-env.ts',
+    'export const value = process.env.SOME_VAR;\n',
+  );
+  await expectClean(
+    'packages/scripts/src/keys-rotate.ts',
+    'export const value = process.env.SOME_VAR;\n',
+  );
+});

@@ -40,6 +40,8 @@ for (const config of [...baseConfig, ...nestConfig, ...nextConfig]) {
   }
 }
 
+const processEnvAllowedPaths = ['apps/api/src/config/**', 'packages/scripts/**'];
+
 export default [
   ...ignoreBlocks,
   ...scope(baseConfig, ''),
@@ -47,4 +49,22 @@ export default [
   ...scope(baseConfig, 'packages/config/'),
   ...scope(nestConfig, 'apps/api/'),
   ...scope(nextConfig, 'apps/web/'),
+  {
+    files: ['**/*.{ts,tsx,js,mjs,cjs}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "MemberExpression[object.name='process'][property.name='env']",
+          message: 'Acesso direto a process.env é proibido. Use o módulo de config (ENV token).',
+        },
+      ],
+    },
+  },
+  {
+    files: processEnvAllowedPaths,
+    rules: {
+      'no-restricted-syntax': 'off',
+    },
+  },
 ];

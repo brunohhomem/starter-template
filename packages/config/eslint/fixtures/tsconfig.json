@@ -10,5 +10,5 @@
     "skipLibCheck": true,
     "isolatedModules": true
   },
-  "include": ["apps/**/*.ts", "apps/**/*.tsx", "apps/**/*.d.ts"]
+  "include": ["apps/**/*.ts", "apps/**/*.tsx", "apps/**/*.d.ts", "packages/**/*.ts"]
 }
