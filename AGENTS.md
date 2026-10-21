@@ -41,4 +41,4 @@ Este repositório é o template base de um monorepo pnpm. A API é NestJS (`apps
 - `apps/web`: `docs/conventions/frontend.md`.
 - Testes: `docs/conventions/testing.md`.
 - Decisões: `docs/adr/`.
-- Versões e desvios de ferramenta: `docs/conventions/tooling.md`.
+- Ao mexer em versões, ESLint, Husky ou CI, leia `docs/conventions/tooling.md`.
