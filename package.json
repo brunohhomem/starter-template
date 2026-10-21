@@ -13,7 +13,11 @@
     "test": "turbo run test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "infra:up": "docker compose -f compose.dev.yaml up -d",
+    "infra:down": "docker compose -f compose.dev.yaml down",
+    "infra:logs": "docker compose -f compose.dev.yaml logs -f",
+    "infra:reset": "docker compose -f compose.dev.yaml down -v"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
