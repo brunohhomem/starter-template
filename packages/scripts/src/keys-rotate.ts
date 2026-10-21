@@ -35,21 +35,14 @@ const KEY_SPECS: readonly KeySpec[] = [
 const KEY_NAMES = KEY_SPECS.map((specItem) => specItem.name);
 
 const CONSEQUENCES: Record<string, string> = {
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- chaves são nomes de variáveis de ambiente
   JWT_ACCESS_SECRET: 'Todas as sessões são invalidadas (access tokens expiram em 15 min)',
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- chaves são nomes de variáveis de ambiente
   JWT_REFRESH_SECRET: 'Todas as sessões são invalidadas (refresh tokens expiram em 7 dias)',
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- chaves são nomes de variáveis de ambiente
   COOKIE_SECRET:
     'Todos os cookies assinados tornam-se inválidos; usuários precisam logar novamente',
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- chaves são nomes de variáveis de ambiente
   ENCRYPTION_KEY:
     'Dados cifrados com a chave antiga ficam ilegíveis; recuperar pelo arquivo de backup do .env',
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- chaves são nomes de variáveis de ambiente
   BACKUP_ENCRYPTION_KEY: 'Backups antigos só abrem com a chave antiga; guarde-a em local seguro',
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- chaves são nomes de variáveis de ambiente
   DB_PASSWORD: 'É preciso trocar também no serviço Postgres em execução; nada automático',
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- chaves são nomes de variáveis de ambiente
   REDIS_PASSWORD: 'É preciso trocar também no serviço Redis em execução; nada automático',
 };
 

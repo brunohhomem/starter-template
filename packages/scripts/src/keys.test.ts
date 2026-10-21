@@ -48,13 +48,9 @@ function runKeysGenerate(args: string[] = []): { stdout: string; stderr: string;
       encoding: 'utf-8',
       env: {
         ...process.env,
-        // eslint-disable-next-line @typescript-eslint/naming-convention -- nomes de variáveis de ambiente
         NODE_ENV: 'test',
-        // eslint-disable-next-line @typescript-eslint/naming-convention -- nomes de variáveis de ambiente
         KEYS_ROOT_DIR: TEST_DIR,
-        // eslint-disable-next-line @typescript-eslint/naming-convention -- nomes de variáveis de ambiente
         KEYS_ENV_FILE: TEST_ENV,
-        // eslint-disable-next-line @typescript-eslint/naming-convention -- nomes de variáveis de ambiente
         KEYS_ENV_EXAMPLE_FILE: TEST_ENV_EXAMPLE,
       },
     },
@@ -74,13 +70,9 @@ function runKeysRotate(
       encoding: 'utf-8',
       env: {
         ...process.env,
-        // eslint-disable-next-line @typescript-eslint/naming-convention -- nomes de variáveis de ambiente
         NODE_ENV: 'test',
-        // eslint-disable-next-line @typescript-eslint/naming-convention -- nomes de variáveis de ambiente
         KEYS_ROOT_DIR: TEST_DIR,
-        // eslint-disable-next-line @typescript-eslint/naming-convention -- nomes de variáveis de ambiente
         KEYS_ENV_FILE: TEST_ENV,
-        // eslint-disable-next-line @typescript-eslint/naming-convention -- nomes de variáveis de ambiente
         KEYS_ENV_EXAMPLE_FILE: TEST_ENV_EXAMPLE,
       },
     },
