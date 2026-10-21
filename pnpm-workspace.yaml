@@ -9,6 +9,13 @@ allowBuilds:
   '@parcel/watcher': true
   esbuild: true
   nestjs-pino: true
+  ioredis: true
+  '@nestjs/terminus': true
+  '@nestjs/swagger': true
+  nestjs-zod: true
+  helmet: true
+  supertest: true
+  '@scarf/scarf': true
 
 minimumReleaseAgeExclude:
   - '@turbo/darwin-64@2.11.10'

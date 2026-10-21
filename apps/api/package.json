@@ -7,24 +7,31 @@
     "build": "nest build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
     "test": "jest",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio",
-    "db:push": "drizzle-kit push"
+    "db:generate": "tsx scripts/db-generate.ts",
+    "db:migrate": "tsx scripts/db-migrate.ts",
+    "db:studio": "tsx scripts/db-studio.ts"
   },
   "dependencies": {
     "@nestjs/common": "12.2.0",
     "@nestjs/core": "12.2.0",
     "@nestjs/platform-express": "12.2.0",
+    "@nestjs/swagger": "^12.0.2",
+    "@nestjs/terminus": "^12.1.0",
     "@starter/shared": "workspace:*",
+    "@types/supertest": "^7.2.1",
     "drizzle-orm": "0.44.2",
+    "helmet": "^8.3.0",
+    "ioredis": "^6.0.0",
     "nestjs-pino": "4.2.0",
+    "nestjs-zod": "^5.5.0",
     "pg": "8.13.1",
     "pino": "9.5.0",
     "pino-http": "10.3.0",
     "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.2"
+    "rxjs": "7.8.2",
+    "supertest": "^7.3.1"
   },
   "devDependencies": {
     "@jest/globals": "30.5.2",
@@ -38,6 +45,7 @@
     "jest": "30.5.2",
     "pino-pretty": "13.0.0",
     "ts-jest": "29.4.15",
+    "tsx": "^4.23.15",
     "typescript": "6.0.3"
   }
 }

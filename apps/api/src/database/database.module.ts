@@ -1,42 +1,55 @@
-import { Global, Module, type Provider } from '@nestjs/common';
+import {
+  Global,
+  Inject,
+  Injectable,
+  Module,
+  type OnApplicationShutdown,
+  type Provider,
+} from '@nestjs/common';
 import { Pool } from 'pg';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { Env } from '../config/env.schema';
 import { ENV } from '../config/app-config.module';
+import { buildDatabaseConfig } from './database-config';
 import * as schema from './schema';
 
-export const DRIZZLE = Symbol('DRIZZLE');
-export const PG_POOL = Symbol('PG_POOL');
+/** Token com a instância Drizzle consumida pelos repositories. */
+export const DATABASE = Symbol('DATABASE');
 
-const poolProvider: Provider = {
-  provide: PG_POOL,
-  useFactory: (env: Readonly<ReturnType<typeof import('../config/load-env').getEnv>>) => {
-    return new Pool({
-      host: env.DB_HOST,
-      port: env.DB_PORT,
-      user: env.DB_USER,
-      password: env.DB_PASSWORD,
-      database: env.DB_NAME,
-      max: env.DB_POOL_MAX ?? 10,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
+export type Database = NodePgDatabase<typeof schema>;
+
+/**
+ * Dona do pool de conexões. Existe como provider para o Nest invocar
+ * `onApplicationShutdown` e encerrar o pool no desligamento da aplicação.
+ */
+@Injectable()
+export class DatabaseConnection implements OnApplicationShutdown {
+  readonly pool: Pool;
+  readonly db: Database;
+
+  constructor(@Inject(ENV) env: Env) {
+    this.pool = new Pool({
+      ...buildDatabaseConfig(env),
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 5_000,
     });
-  },
-  inject: [ENV],
-};
+    this.db = drizzle(this.pool, { schema });
+  }
 
-const drizzleProvider: Provider = {
-  provide: DRIZZLE,
-  useFactory: (pool: Pool): NodePgDatabase<typeof schema> => {
-    return drizzle(pool, { schema });
-  },
-  inject: [PG_POOL],
+  async onApplicationShutdown(): Promise<void> {
+    await this.pool.end();
+  }
+}
+
+const databaseProvider: Provider = {
+  provide: DATABASE,
+  useFactory: (connection: DatabaseConnection): Database => connection.db,
+  inject: [DatabaseConnection],
 };
 
 @Global()
 @Module({
-  providers: [poolProvider, drizzleProvider],
-  exports: [PG_POOL, DRIZZLE],
+  providers: [DatabaseConnection, databaseProvider],
+  exports: [DATABASE],
 })
 export class DatabaseModule {}
-
-export type Database = NodePgDatabase<typeof schema>;
