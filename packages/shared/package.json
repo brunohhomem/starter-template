@@ -1,0 +1,13 @@
+{
+  "name": "@starter/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@starter/config": "workspace:*",
+    "eslint": "9.39.5"
+  }
+}

@@ -4,6 +4,9 @@ packages:
 
 engineStrict: true
 
+allowBuilds:
+  unrs-resolver: true
+
 minimumReleaseAgeExclude:
   - "@turbo/darwin-64@2.11.10"
   - "@turbo/darwin-arm64@2.11.10"
