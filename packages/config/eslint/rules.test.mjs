@@ -14,6 +14,7 @@ const eslint = new ESLint({
   cwd: repoRoot,
   concurrency: 'off',
   globInputPaths: false,
+  ignore: false,
   overrideConfigFile: path.join(repoRoot, 'eslint.config.mjs'),
 });
 

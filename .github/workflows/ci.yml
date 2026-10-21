@@ -42,15 +42,15 @@ jobs:
           restore-keys: |
             turbo-
 
-      - name: Formatação
-        run: pnpm format:check
-
       - name: Fim de linha
         run: |
           if git ls-files --eol | grep -E 'i/crlf|i/mixed'; then
             echo "O índice tem fim de linha CRLF ou misto."
             exit 1
           fi
+
+      - name: Formatação
+        run: pnpm format:check
 
       - name: Lint, tipos, testes e build
         run: pnpm turbo run lint typecheck test build
