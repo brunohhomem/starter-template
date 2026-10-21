@@ -7,4 +7,5 @@
  * A F1 ainda não tem entities (a primeira, `system_settings`, entra na T7);
  * `users` e `sessions` são escopo da F2 e não podem existir aqui.
  */
-export {};
+export { systemSettings } from '../modules/settings/system-setting.entity';
+export type { SystemSetting, NewSystemSetting } from '../modules/settings/system-setting.entity';
