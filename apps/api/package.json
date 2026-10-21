@@ -3,16 +3,27 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "start:dev": "nest start --watch",
+    "build": "nest build",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "jest"
   },
   "dependencies": {
-    "@starter/shared": "workspace:*"
+    "@nestjs/common": "12.2.0",
+    "@nestjs/core": "12.2.0",
+    "@nestjs/platform-express": "12.2.0",
+    "@starter/shared": "workspace:*",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
   },
   "devDependencies": {
+    "@jest/globals": "30.5.2",
+    "@nestjs/cli": "12.0.10",
     "@starter/config": "workspace:*",
     "eslint": "9.39.5",
+    "jest": "30.5.2",
+    "ts-jest": "29.4.15",
     "typescript": "6.0.3"
   }
 }

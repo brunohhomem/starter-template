@@ -16,4 +16,4 @@ O TypeScript do monorepo é o **6.0.3**. A estável mais recente é a 7.0.2, que
 
 ## pnpm
 
-O pnpm 12 aplica `engineStrict` a partir do `pnpm-workspace.yaml`. O `.npmrc` mantém `engine-strict=true`, como pedido na spec, mas sozinho ele não faz o `pnpm install` falhar. O `allowBuilds` de `unrs-resolver` libera o script nativo que o `eslint-config-next` precisa para resolver imports.
+O pnpm 12 aplica `engineStrict` a partir do `pnpm-workspace.yaml`. O `.npmrc` mantém `engine-strict=true`, como pedido na spec, mas sozinho ele não faz o `pnpm install` falhar. O `allowBuilds` de `unrs-resolver` libera o script nativo que o `eslint-config-next` precisa para resolver imports. O de `@parcel/watcher` libera o watcher que o `@nestjs/cli` usa no `start:dev`.
