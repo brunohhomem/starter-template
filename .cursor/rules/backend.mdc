@@ -1,0 +1,6 @@
+---
+globs: apps/api/**
+alwaysApply: false
+---
+
+Leia `docs/conventions/backend.md` antes de alterar a API.
