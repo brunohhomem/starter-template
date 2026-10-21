@@ -82,6 +82,7 @@ function disableComment(suffix) {
 
 test.after(() => {
   fs.rmSync(path.join(fixtureRoot, 'apps'), { recursive: true, force: true });
+  fs.rmSync(path.join(fixtureRoot, 'packages'), { recursive: true, force: true });
 });
 
 test('fixture não sai de packages/config', () => {
