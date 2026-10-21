@@ -40,7 +40,11 @@ for (const config of [...baseConfig, ...nestConfig, ...nextConfig]) {
   }
 }
 
-const processEnvAllowedPaths = ['apps/api/src/config/**', 'packages/scripts/**'];
+const processEnvAllowedPaths = [
+  'apps/api/src/config/**',
+  'packages/scripts/**',
+  'apps/api/drizzle.config.ts',
+];
 
 export default [
   ...ignoreBlocks,
