@@ -24,7 +24,7 @@ interface AdminSeedResult {
 export async function seedAdmin(db: NodePgDatabase): Promise<AdminSeedResult> {
   const env = getEnv();
   const adminEmail = env.ADMIN_EMAIL.toLowerCase();
-  const isDevelopment = env.NODE_ENV === 'development';
+  const isDevelopment = env.NODE_ENV === 'development' || env.NODE_ENV === 'test';
 
   // 1. Verificar se admin já existe
   const existingAdmin = await db
