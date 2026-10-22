@@ -6,24 +6,24 @@ Ao retomar, leia este arquivo e continue da primeira tarefa não concluída, sem
 
 ## Situação das tarefas
 
-| T (spec) | Tarefa                                               | Status                          | Commit    | Observações                                                                                                                                                                                                             |
-| -------- | ---------------------------------------------------- | ------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T1       | Compose de desenvolvimento                           | feita                           | `58782dd` | Aceite reconferido na Definição de Pronto                                                                                                                                                                               |
-| T2       | `keys:generate` e `keys:rotate`                      | feita                           | `41c0b6d` | Aceite reconferido na Definição de Pronto                                                                                                                                                                               |
-| T3       | Validação de ambiente na API                         | feita                           | `977b924` | Aceite reconferido na Definição de Pronto                                                                                                                                                                               |
-| **T4**   | **`packages/shared`: contratos de erro e paginação** | **PENDENTE (não feita)**        | —         | O agente usou o número "T4" para o Drizzle. `errorResponseSchema`, `paginationQuerySchema`, `paginatedResponseSchema` e `buildPageMeta` ainda **não existem** em `packages/shared/src`. **Primeira tarefa a executar.** |
-| T5       | Módulo de banco e `coreColumns`                      | feita sob o nome "T4" do agente | `768fde5` | **Executar o aceite da T5:** `uuid_extract_version(id) = 7`, `timestamptz`, `updatedAt` mudando via Drizzle, `buildDatabaseConfig` único                                                                                |
-| T6       | Migrations nomeadas                                  | feita                           | `3de99b5` | **Executar o aceite da T6**, inclusive a **prova de atomicidade** e o registro de como o drizzle-kit nomeia os arquivos                                                                                                 |
-| T7       | Entity `system_settings`                             | feita                           | `00871ca` |                                                                                                                                                                                                                         |
-| T8       | Bootstrap compartilhado `configureApp`               | feita                           | `52d4a2c` |                                                                                                                                                                                                                         |
-| T9       | Logs estruturados                                    | feita sob o nome "T5" do agente | `b1e5cc0` | **Executar o aceite da T9** (request ID válido e inválido, redação, formato por ambiente, `/api/health` fora do log)                                                                                                    |
-| T10      | Validação e erros padronizados                       | pendente                        | —         | Depende da T4                                                                                                                                                                                                           |
-| T11      | Módulo de Redis                                      | pendente                        | —         |                                                                                                                                                                                                                         |
-| T12      | Health                                               | pendente                        | —         |                                                                                                                                                                                                                         |
-| T13      | Swagger                                              | pendente                        | —         |                                                                                                                                                                                                                         |
-| T14      | Infraestrutura de testes de integração               | pendente                        | —         |                                                                                                                                                                                                                         |
-| T15      | CI: job de integração                                | pendente                        | —         |                                                                                                                                                                                                                         |
-| T16      | Documentação                                         | pendente                        | —         |                                                                                                                                                                                                                         |
+| T (spec) | Tarefa                                               | Status                          | Commit    | Observações                                                                                                                              |
+| -------- | ---------------------------------------------------- | ------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| T1       | Compose de desenvolvimento                           | feita                           | `58782dd` | Aceite reconferido na Definição de Pronto                                                                                                |
+| T2       | `keys:generate` e `keys:rotate`                      | feita                           | `41c0b6d` | Aceite reconferido na Definição de Pronto                                                                                                |
+| T3       | Validação de ambiente na API                         | feita                           | `977b924` | Aceite reconferido na Definição de Pronto                                                                                                |
+| **T4**   | **`packages/shared`: contratos de erro e paginação** | **feita**                       | `4a81d62` | `errorResponseSchema`, `paginationQuerySchema`, `paginatedResponseSchema`, `buildPageMeta` criados com testes. Commit: 4a81d62           |
+| T5       | Módulo de banco e `coreColumns`                      | feita sob o nome "T4" do agente | `768fde5` | **Executar o aceite da T5:** `uuid_extract_version(id) = 7`, `timestamptz`, `updatedAt` mudando via Drizzle, `buildDatabaseConfig` único |
+| T6       | Migrations nomeadas                                  | feita                           | `3de99b5` | **Executar o aceite da T6**, inclusive a **prova de atomicidade** e o registro de como o drizzle-kit nomeia os arquivos                  |
+| T7       | Entity `system_settings`                             | feita                           | `00871ca` |                                                                                                                                          |
+| T8       | Bootstrap compartilhado `configureApp`               | feita                           | `52d4a2c` |                                                                                                                                          |
+| T9       | Logs estruturados                                    | feita sob o nome "T5" do agente | `b1e5cc0` | **Executar o aceite da T9** (request ID válido e inválido, redação, formato por ambiente, `/api/health` fora do log)                     |
+| T10      | Validação e erros padronizados                       | pendente                        | —         | Depende da T4                                                                                                                            |
+| T11      | Módulo de Redis                                      | pendente                        | —         |                                                                                                                                          |
+| T12      | Health                                               | pendente                        | —         |                                                                                                                                          |
+| T13      | Swagger                                              | pendente                        | —         |                                                                                                                                          |
+| T14      | Infraestrutura de testes de integração               | pendente                        | —         |                                                                                                                                          |
+| T15      | CI: job de integração                                | pendente                        | —         |                                                                                                                                          |
+| T16      | Documentação                                         | pendente                        | —         |                                                                                                                                          |
 
 ## Commits auxiliares
 
@@ -48,12 +48,14 @@ Ao retomar, leia este arquivo e continue da primeira tarefa não concluída, sem
 
 ## Decisões tomadas
 
-| Data | Decisão | Motivo |
-| ---- | ------- | ------ |
-|      |         |        |
+| Data       | Decisão                                                                             | Motivo                                                                                                                                                        |
+| ---------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-21 | T4: schemas de erro e paginação em `packages/shared/src/error.ts` e `pagination.ts` | Segue a especificação da T4; tipos inferidos com zod; `paginatedResponseSchema` é factory que aceita schema do item; testes cobrem parsing, validação e tipos |
 
 ## Evidências de aceite
 
-| T   | Comando ou prova | Resultado |
-| --- | ---------------- | --------- |
-|     |                  |           |
+| T   | Comando ou prova                          | Resultado          |
+| --- | ----------------------------------------- | ------------------ |
+| T4  | `pnpm test --filter @starter/shared`      | 23 testes passando |
+| T4  | `pnpm lint --filter @starter/shared`      | 0 erros            |
+| T4  | `pnpm typecheck --filter @starter/shared` | OK                 |
