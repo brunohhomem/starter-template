@@ -16,11 +16,9 @@ if (!testDbName.endsWith('_test')) {
 }
 
 // Define NODE_ENV=test para logs silenciosos no pino
-// eslint-disable-next-line no-restricted-syntax -- test setup runs before NestJS config module
 process.env.NODE_ENV = 'test';
 
 console.log('[integration-setup-env] Ambiente de teste configurado:', {
-  // eslint-disable-next-line no-restricted-syntax -- test setup runs before NestJS config module
   NODE_ENV: process.env.NODE_ENV,
   TEST_DB_NAME: testDbName,
   DB_HOST: env.DB_HOST,

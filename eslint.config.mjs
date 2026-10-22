@@ -44,6 +44,8 @@ const processEnvAllowedPaths = [
   'apps/api/src/config/**',
   'packages/scripts/**',
   'apps/api/drizzle.config.ts',
+  '**/test/**/*.ts',
+  'test/**/*.ts',
 ];
 
 export default [

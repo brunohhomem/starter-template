@@ -71,7 +71,7 @@ const nestConfig = [
     },
   },
   {
-    files: ['test/**/*.ts'],
+    files: ['**/test/**/*.ts', 'test/**/*.ts'],
     languageOptions: {
       parserOptions: {
         projectService: false,
