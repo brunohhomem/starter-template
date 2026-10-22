@@ -13,6 +13,7 @@
       "dependsOn": ["^build"]
     },
     "test:integration": {
+      "dependsOn": ["^build"],
       "cache": false,
       "env": [
         "DB_HOST",
