@@ -16,6 +16,8 @@ export function configureSwagger(app: INestApplication, env: Env): void {
     .setTitle('Starter API')
     .setDescription('API base do template monorepo')
     .setVersion('1.0')
+    .addCookieAuth('access_token')
+    .addCookieAuth('refresh_token')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

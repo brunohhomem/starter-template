@@ -53,3 +53,4 @@ Este repositório é o template base de um monorepo pnpm. A API é NestJS (`apps
 - Banco: `docs/conventions/database.md`.
 - Decisões: `docs/adr/`.
 - Ao mexer em versões, ESLint, Husky ou CI, leia `docs/conventions/tooling.md`.
+- Autenticação: leia `docs/auth.md`. Toda rota nova é protegida por padrão; `@Public()` exige justificativa em comentário de uma linha.
