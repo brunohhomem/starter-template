@@ -1,6 +1,6 @@
 import { eq, and, desc, lt } from 'drizzle-orm';
 import { Inject, Injectable } from '@nestjs/common';
-import type { Database } from '../../database/database.module';
+import type { Database, DatabaseTransaction } from '../../database/database.module';
 import { DATABASE } from '../../database/database.module';
 import { users, type User, type NewUser } from './user.entity';
 
@@ -8,18 +8,21 @@ import { users, type User, type NewUser } from './user.entity';
 export class UsersRepository {
   constructor(@Inject(DATABASE) private readonly db: Database) {}
 
-  async findById(id: string): Promise<User | null> {
-    const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+  async findById(id: string, tx?: DatabaseTransaction): Promise<User | null> {
+    const client = tx ?? this.db;
+    const result = await client.select().from(users).where(eq(users.id, id)).limit(1);
     return result[0] ?? null;
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    const result = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
+  async findByEmail(email: string, tx?: DatabaseTransaction): Promise<User | null> {
+    const client = tx ?? this.db;
+    const result = await client.select().from(users).where(eq(users.email, email)).limit(1);
     return result[0] ?? null;
   }
 
-  async create(data: NewUser): Promise<User> {
-    const result = await this.db.insert(users).values(data).returning();
+  async create(data: NewUser, tx?: DatabaseTransaction): Promise<User> {
+    const client = tx ?? this.db;
+    const result = await client.insert(users).values(data).returning();
     if (!result[0]) throw new Error('Failed to create user');
     return result[0];
   }
@@ -28,8 +31,10 @@ export class UsersRepository {
     id: string,
     passwordHash: string,
     mustChangePassword: boolean,
+    tx?: DatabaseTransaction,
   ): Promise<User> {
-    const result = await this.db
+    const client = tx ?? this.db;
+    const result = await client
       .update(users)
       .set({ passwordHash, mustChangePassword, updatedAt: new Date() })
       .where(eq(users.id, id))
@@ -38,8 +43,9 @@ export class UsersRepository {
     return result[0];
   }
 
-  async touchLastLogin(id: string): Promise<void> {
-    await this.db
+  async touchLastLogin(id: string, tx?: DatabaseTransaction): Promise<void> {
+    const client = tx ?? this.db;
+    await client
       .update(users)
       .set({ lastLoginAt: new Date(), updatedAt: new Date() })
       .where(eq(users.id, id));

@@ -2,8 +2,28 @@
 const config = {
   testEnvironment: 'node',
   transform: {
-    '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }],
+    '^.+\\.[tj]s$': [
+      '@swc/jest',
+      {
+        jsc: {
+          parser: {
+            syntax: 'typescript',
+            decorators: true,
+          },
+          transform: {
+            legacyDecorator: true,
+            decoratorMetadata: true,
+          },
+          target: 'es2022',
+        },
+        module: {
+          type: 'commonjs',
+        },
+      },
+    ],
   },
+  transformIgnorePatterns: [],
+  setupFilesAfterEnv: ['<rootDir>/src/jest.setup.ts'],
   testMatch: ['**/*.spec.ts'],
 };
 

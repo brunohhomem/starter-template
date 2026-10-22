@@ -19,12 +19,23 @@ export interface RefreshTokenPair {
 
 @Injectable()
 export class TokenService {
+  public readonly accessTtlMinutes: number;
+  public readonly refreshTtlDays: number;
+  public readonly accessSecret: string;
+  public readonly refreshReuseGraceSeconds: number;
+
   constructor(
-    private readonly jwtService: JwtService,
-    private readonly accessTtlMinutes: number,
-    private readonly refreshTtlDays: number,
-    private readonly accessSecret: string,
-  ) {}
+    accessSecret: string,
+    accessTtlMinutes: number,
+    refreshTtlDays: number,
+    refreshReuseGraceSeconds: number = 10,
+    private readonly jwtService: JwtService = new JwtService(),
+  ) {
+    this.accessSecret = accessSecret;
+    this.accessTtlMinutes = accessTtlMinutes;
+    this.refreshTtlDays = refreshTtlDays;
+    this.refreshReuseGraceSeconds = refreshReuseGraceSeconds;
+  }
 
   signAccess(
     user: { id: string; role: string },

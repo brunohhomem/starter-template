@@ -3,6 +3,8 @@ import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { REDIS } from '../redis/redis.module';
 import Redis from 'ioredis';
 import { DATABASE, type Database } from '../database/database.module';
+import { Public } from '../common/decorators/public.decorator';
+import { SkipThrottle } from '@nestjs/throttler';
 
 // Versão do package.json da API (lida em tempo de build)
 const API_VERSION = require('../../package.json').version as string;
@@ -16,6 +18,14 @@ const API_VERSION = require('../../package.json').version as string;
  */
 @ApiTags('health')
 @Controller('health')
+@Public()
+@SkipThrottle({
+  default: true,
+  login: true,
+  register: true,
+  refresh: true,
+  ['change-password']: true,
+})
 export class HealthController {
   constructor(
     @Inject(DATABASE) private readonly db: Database,

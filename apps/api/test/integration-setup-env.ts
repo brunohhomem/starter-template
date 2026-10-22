@@ -1,10 +1,17 @@
-import { getEnv } from '../src/config/load-env';
+import { getEnv, resetEnvCache } from '../src/config/load-env';
 
 /**
  * Configuração de ambiente para testes de integração.
  * Garante que as variáveis necessárias estejam disponíveis.
  * O Turbo precisa delas declaradas para cache correto (F0).
  */
+
+// Define NODE_ENV=test ANTES de carregar o env para que o cache seja correto
+process.env.NODE_ENV = 'test';
+
+// Reseta o cache para forçar recarregamento com NODE_ENV=test
+resetEnvCache();
+
 const env = getEnv();
 
 // Validação extra: TRAVA DE SEGURANÇA
@@ -14,9 +21,6 @@ if (!testDbName.endsWith('_test')) {
     `TEST_DB_NAME ("${testDbName}") deve terminar em "_test". Recusando rodar testes de integração.`,
   );
 }
-
-// Define NODE_ENV=test para logs silenciosos no pino
-process.env.NODE_ENV = 'test';
 
 console.log('[integration-setup-env] Ambiente de teste configurado:', {
   NODE_ENV: process.env.NODE_ENV,
