@@ -60,7 +60,7 @@ export class HealthController {
     try {
       const result = await Promise.race([
         this.redis.ping(),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000)),
       ]);
       return result === 'PONG';
     } catch {
