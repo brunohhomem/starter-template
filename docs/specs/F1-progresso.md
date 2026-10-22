@@ -20,7 +20,7 @@ Ao retomar, leia este arquivo e continue da primeira tarefa não concluída, sem
 | T10      | Validação e erros padronizados                       | feita                           | `1c1047f` | `ZodValidationPipe` global, `AllExceptionsFilter` global, `ZodSerializerInterceptor`; resposta segue `errorResponseSchema` do shared          |
 | T11      | Módulo de Redis                                      | feita                           | `f8e95c5` | `RedisModule.forRoot()` com ioredis, token `REDIS`, `OnApplicationShutdown` encerra conexão; BullMQ usará conexões próprias depois            |
 | T12      | Health                                               | feita                           | `39cfc3c` | `GET /api/health` pública, verifica banco (SELECT 1) e Redis (PING) com timeout 3s; resposta mínima `{status, version}`; 200/503 sem detalhes |
-| T13      | Swagger                                              | pendente                        | —         |                                                                                                                                               |
+| T13      | Swagger                                              | feita                           | `d7c2440` | `/api/docs` condicional a `SWAGGER_ENABLED`; passa por `cleanupOpenApiDoc`; health documentado com `@ApiResponse`                             |
 | T14      | Infraestrutura de testes de integração               | pendente                        | —         |                                                                                                                                               |
 | T15      | CI: job de integração                                | pendente                        | —         |                                                                                                                                               |
 | T16      | Documentação                                         | pendente                        | —         |                                                                                                                                               |
@@ -48,12 +48,13 @@ Ao retomar, leia este arquivo e continue da primeira tarefa não concluída, sem
 
 ## Decisões tomadas
 
-| Data       | Decisão                                                                              | Motivo                                                                                                                                                                 |
-| ---------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-21 | T4: schemas de erro e paginação em `packages/shared/src/error.ts` e `pagination.ts`  | Segue a especificação da T4; tipos inferidos com zod; `paginatedResponseSchema` é factory que aceita schema do item; testes cobrem parsing, validação e tipos          |
-| 2026-10-21 | T10: `ZodValidationPipe` + `AllExceptionsFilter` + `ZodSerializerInterceptor` global | `nestjs-zod` fornece `ZodValidationException` com `details` por campo; filtro mapeia HttpException→400, outros→500 sem stack em produção; `requestId` em toda resposta |
-| 2026-10-21 | T11: `RedisModule.forRoot()` com ioredis, connection lazy, `OnApplicationShutdown`   | Segue spec: token `REDIS`, config por `REDIS_*`, mesma conexão para health/throttler; BullMQ terá conexões próprias com `maxRetriesPerRequest: null`                   |
-| 2026-10-21 | T12: Health controller sem @nestjs/terminus, resposta mínima manual                  | Spec exige resposta mínima sem detalhes; terminus retorna estrutura verbosa; implementação direta com HttpException para 503 é mais simples e atende ao contrato       |
+| Data       | Decisão                                                                              | Motivo                                                                                                                                                                  |
+| ---------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-21 | T4: schemas de erro e paginação em `packages/shared/src/error.ts` e `pagination.ts`  | Segue a especificação da T4; tipos inferidos com zod; `paginatedResponseSchema` é factory que aceita schema do item; testes cobrem parsing, validação e tipos           |
+| 2026-10-21 | T10: `ZodValidationPipe` + `AllExceptionsFilter` + `ZodSerializerInterceptor` global | `nestjs-zod` fornece `ZodValidationException` com `details` por campo; filtro mapeia HttpException→400, outros→500 sem stack em produção; `requestId` em toda resposta  |
+| 2026-10-21 | T11: `RedisModule.forRoot()` com ioredis, connection lazy, `OnApplicationShutdown`   | Segue spec: token `REDIS`, config por `REDIS_*`, mesma conexão para health/throttler; BullMQ terá conexões próprias com `maxRetriesPerRequest: null`                    |
+| 2026-10-21 | T12: Health controller sem @nestjs/terminus, resposta mínima manual                  | Spec exige resposta mínima sem detalhes; terminus retorna estrutura verbosa; implementação direta com HttpException para 503 é mais simples e atende ao contrato        |
+| 2026-10-21 | T13: Swagger já configurado em `configureSwagger`; health usa `@ApiResponse`         | `configureSwagger` já existia; `@ZodResponse` do nestjs-zod não aceita schema customizado; `@ApiResponse` do @nestjs/swagger funciona para documentar respostas 200/503 |
 
 ## Evidências de aceite
 
@@ -71,3 +72,6 @@ Ao retomar, leia este arquivo e continue da primeira tarefa não concluída, sem
 | T12 | `pnpm test --filter @starter/api`         | 25 testes passando |
 | T12 | `pnpm lint --filter @starter/api`         | 0 erros (2 warns)  |
 | T12 | `pnpm typecheck --filter @starter/api`    | OK                 |
+| T13 | `pnpm test --filter @starter/api`         | 25 testes passando |
+| T13 | `pnpm lint --filter @starter/api`         | 0 erros (2 warns)  |
+| T13 | `pnpm typecheck --filter @starter/api`    | OK                 |
