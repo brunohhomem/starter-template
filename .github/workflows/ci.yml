@@ -133,7 +133,7 @@ jobs:
           SWAGGER_ENABLED: true
           TRUST_PROXY_HOPS: 0
           NODE_ENV: test
-        run: pnpm keys:generate
+        run: pnpm --filter @starter/scripts keys:generate
 
       - name: Rodar testes de integração
         env:
