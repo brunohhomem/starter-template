@@ -18,7 +18,7 @@ Ao retomar, leia este arquivo e continue da primeira tarefa não concluída, sem
 | T8       | Bootstrap compartilhado `configureApp`               | feita                           | `52d4a2c` |                                                                                                                                          |
 | T9       | Logs estruturados                                    | feita sob o nome "T5" do agente | `b1e5cc0` | **Executar o aceite da T9** (request ID válido e inválido, redação, formato por ambiente, `/api/health` fora do log)                     |
 | T10      | Validação e erros padronizados                       | feita                           | `1c1047f` | `ZodValidationPipe` global, `AllExceptionsFilter` global, `ZodSerializerInterceptor`; resposta segue `errorResponseSchema` do shared     |
-| T11      | Módulo de Redis                                      | pendente                        | —         |                                                                                                                                          |
+| T11      | Módulo de Redis                                      | feita                           | `f8e95c5` | `RedisModule.forRoot()` com ioredis, token `REDIS`, `OnApplicationShutdown` encerra conexão; BullMQ usará conexões próprias depois       |
 | T12      | Health                                               | pendente                        | —         |                                                                                                                                          |
 | T13      | Swagger                                              | pendente                        | —         |                                                                                                                                          |
 | T14      | Infraestrutura de testes de integração               | pendente                        | —         |                                                                                                                                          |
@@ -52,6 +52,7 @@ Ao retomar, leia este arquivo e continue da primeira tarefa não concluída, sem
 | ---------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-10-21 | T4: schemas de erro e paginação em `packages/shared/src/error.ts` e `pagination.ts`  | Segue a especificação da T4; tipos inferidos com zod; `paginatedResponseSchema` é factory que aceita schema do item; testes cobrem parsing, validação e tipos          |
 | 2026-10-21 | T10: `ZodValidationPipe` + `AllExceptionsFilter` + `ZodSerializerInterceptor` global | `nestjs-zod` fornece `ZodValidationException` com `details` por campo; filtro mapeia HttpException→400, outros→500 sem stack em produção; `requestId` em toda resposta |
+| 2026-10-21 | T11: `RedisModule.forRoot()` com ioredis, connection lazy, `OnApplicationShutdown`   | Segue spec: token `REDIS`, config por `REDIS_*`, mesma conexão para health/throttler; BullMQ terá conexões próprias com `maxRetriesPerRequest: null`                   |
 
 ## Evidências de aceite
 
@@ -63,3 +64,6 @@ Ao retomar, leia este arquivo e continue da primeira tarefa não concluída, sem
 | T10 | `pnpm test --filter @starter/api`         | 25 testes passando |
 | T10 | `pnpm lint --filter @starter/api`         | 0 erros (2 warns)  |
 | T10 | `pnpm typecheck --filter @starter/api`    | OK                 |
+| T11 | `pnpm test --filter @starter/api`         | 25 testes passando |
+| T11 | `pnpm lint --filter @starter/api`         | 0 erros (2 warns)  |
+| T11 | `pnpm typecheck --filter @starter/api`    | OK                 |
