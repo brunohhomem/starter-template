@@ -6,24 +6,24 @@ Ao retomar, leia este arquivo e continue da primeira tarefa não concluída, sem
 
 ## Situação das tarefas
 
-| T (spec) | Tarefa                                               | Status                          | Commit    | Observações                                                                                                                              |
-| -------- | ---------------------------------------------------- | ------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| T1       | Compose de desenvolvimento                           | feita                           | `58782dd` | Aceite reconferido na Definição de Pronto                                                                                                |
-| T2       | `keys:generate` e `keys:rotate`                      | feita                           | `41c0b6d` | Aceite reconferido na Definição de Pronto                                                                                                |
-| T3       | Validação de ambiente na API                         | feita                           | `977b924` | Aceite reconferido na Definição de Pronto                                                                                                |
-| **T4**   | **`packages/shared`: contratos de erro e paginação** | **feita**                       | `4a81d62` | `errorResponseSchema`, `paginationQuerySchema`, `paginatedResponseSchema`, `buildPageMeta` criados com testes. Commit: 4a81d62           |
-| T5       | Módulo de banco e `coreColumns`                      | feita sob o nome "T4" do agente | `768fde5` | **Executar o aceite da T5:** `uuid_extract_version(id) = 7`, `timestamptz`, `updatedAt` mudando via Drizzle, `buildDatabaseConfig` único |
-| T6       | Migrations nomeadas                                  | feita                           | `3de99b5` | **Executar o aceite da T6**, inclusive a **prova de atomicidade** e o registro de como o drizzle-kit nomeia os arquivos                  |
-| T7       | Entity `system_settings`                             | feita                           | `00871ca` |                                                                                                                                          |
-| T8       | Bootstrap compartilhado `configureApp`               | feita                           | `52d4a2c` |                                                                                                                                          |
-| T9       | Logs estruturados                                    | feita sob o nome "T5" do agente | `b1e5cc0` | **Executar o aceite da T9** (request ID válido e inválido, redação, formato por ambiente, `/api/health` fora do log)                     |
-| T10      | Validação e erros padronizados                       | feita                           | `1c1047f` | `ZodValidationPipe` global, `AllExceptionsFilter` global, `ZodSerializerInterceptor`; resposta segue `errorResponseSchema` do shared     |
-| T11      | Módulo de Redis                                      | feita                           | `f8e95c5` | `RedisModule.forRoot()` com ioredis, token `REDIS`, `OnApplicationShutdown` encerra conexão; BullMQ usará conexões próprias depois       |
-| T12      | Health                                               | pendente                        | —         |                                                                                                                                          |
-| T13      | Swagger                                              | pendente                        | —         |                                                                                                                                          |
-| T14      | Infraestrutura de testes de integração               | pendente                        | —         |                                                                                                                                          |
-| T15      | CI: job de integração                                | pendente                        | —         |                                                                                                                                          |
-| T16      | Documentação                                         | pendente                        | —         |                                                                                                                                          |
+| T (spec) | Tarefa                                               | Status                          | Commit    | Observações                                                                                                                                   |
+| -------- | ---------------------------------------------------- | ------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| T1       | Compose de desenvolvimento                           | feita                           | `58782dd` | Aceite reconferido na Definição de Pronto                                                                                                     |
+| T2       | `keys:generate` e `keys:rotate`                      | feita                           | `41c0b6d` | Aceite reconferido na Definição de Pronto                                                                                                     |
+| T3       | Validação de ambiente na API                         | feita                           | `977b924` | Aceite reconferido na Definição de Pronto                                                                                                     |
+| **T4**   | **`packages/shared`: contratos de erro e paginação** | **feita**                       | `4a81d62` | `errorResponseSchema`, `paginationQuerySchema`, `paginatedResponseSchema`, `buildPageMeta` criados com testes. Commit: 4a81d62                |
+| T5       | Módulo de banco e `coreColumns`                      | feita sob o nome "T4" do agente | `768fde5` | **Executar o aceite da T5:** `uuid_extract_version(id) = 7`, `timestamptz`, `updatedAt` mudando via Drizzle, `buildDatabaseConfig` único      |
+| T6       | Migrations nomeadas                                  | feita                           | `3de99b5` | **Executar o aceite da T6**, inclusive a **prova de atomicidade** e o registro de como o drizzle-kit nomeia os arquivos                       |
+| T7       | Entity `system_settings`                             | feita                           | `00871ca` |                                                                                                                                               |
+| T8       | Bootstrap compartilhado `configureApp`               | feita                           | `52d4a2c` |                                                                                                                                               |
+| T9       | Logs estruturados                                    | feita sob o nome "T5" do agente | `b1e5cc0` | **Executar o aceite da T9** (request ID válido e inválido, redação, formato por ambiente, `/api/health` fora do log)                          |
+| T10      | Validação e erros padronizados                       | feita                           | `1c1047f` | `ZodValidationPipe` global, `AllExceptionsFilter` global, `ZodSerializerInterceptor`; resposta segue `errorResponseSchema` do shared          |
+| T11      | Módulo de Redis                                      | feita                           | `f8e95c5` | `RedisModule.forRoot()` com ioredis, token `REDIS`, `OnApplicationShutdown` encerra conexão; BullMQ usará conexões próprias depois            |
+| T12      | Health                                               | feita                           | `39cfc3c` | `GET /api/health` pública, verifica banco (SELECT 1) e Redis (PING) com timeout 3s; resposta mínima `{status, version}`; 200/503 sem detalhes |
+| T13      | Swagger                                              | pendente                        | —         |                                                                                                                                               |
+| T14      | Infraestrutura de testes de integração               | pendente                        | —         |                                                                                                                                               |
+| T15      | CI: job de integração                                | pendente                        | —         |                                                                                                                                               |
+| T16      | Documentação                                         | pendente                        | —         |                                                                                                                                               |
 
 ## Commits auxiliares
 
@@ -53,6 +53,7 @@ Ao retomar, leia este arquivo e continue da primeira tarefa não concluída, sem
 | 2026-10-21 | T4: schemas de erro e paginação em `packages/shared/src/error.ts` e `pagination.ts`  | Segue a especificação da T4; tipos inferidos com zod; `paginatedResponseSchema` é factory que aceita schema do item; testes cobrem parsing, validação e tipos          |
 | 2026-10-21 | T10: `ZodValidationPipe` + `AllExceptionsFilter` + `ZodSerializerInterceptor` global | `nestjs-zod` fornece `ZodValidationException` com `details` por campo; filtro mapeia HttpException→400, outros→500 sem stack em produção; `requestId` em toda resposta |
 | 2026-10-21 | T11: `RedisModule.forRoot()` com ioredis, connection lazy, `OnApplicationShutdown`   | Segue spec: token `REDIS`, config por `REDIS_*`, mesma conexão para health/throttler; BullMQ terá conexões próprias com `maxRetriesPerRequest: null`                   |
+| 2026-10-21 | T12: Health controller sem @nestjs/terminus, resposta mínima manual                  | Spec exige resposta mínima sem detalhes; terminus retorna estrutura verbosa; implementação direta com HttpException para 503 é mais simples e atende ao contrato       |
 
 ## Evidências de aceite
 
@@ -67,3 +68,6 @@ Ao retomar, leia este arquivo e continue da primeira tarefa não concluída, sem
 | T11 | `pnpm test --filter @starter/api`         | 25 testes passando |
 | T11 | `pnpm lint --filter @starter/api`         | 0 erros (2 warns)  |
 | T11 | `pnpm typecheck --filter @starter/api`    | OK                 |
+| T12 | `pnpm test --filter @starter/api`         | 25 testes passando |
+| T12 | `pnpm lint --filter @starter/api`         | 0 erros (2 warns)  |
+| T12 | `pnpm typecheck --filter @starter/api`    | OK                 |
