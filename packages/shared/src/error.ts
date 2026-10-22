@@ -9,6 +9,7 @@ export const errorResponseSchema = zod.object({
   statusCode: zod.number().int().positive(),
   error: zod.string(),
   message: zod.string(),
+  code: zod.string().optional(),
   details: zod.array(errorDetailSchema).optional(),
   requestId: zod.string(),
   path: zod.string(),

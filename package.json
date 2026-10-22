@@ -2,7 +2,7 @@
   "private": true,
   "packageManager": "pnpm@12.14.0",
   "engines": {
-    "node": ">=24.22.1 <25",
+    "node": ">=22.0.0 <25",
     "pnpm": ">=12.14.0 <13"
   },
   "scripts": {
@@ -17,7 +17,8 @@
     "infra:up": "docker compose -f compose.dev.yaml up -d",
     "infra:down": "docker compose -f compose.dev.yaml down",
     "infra:logs": "docker compose -f compose.dev.yaml logs -f",
-    "infra:reset": "docker compose -f compose.dev.yaml down -v"
+    "infra:reset": "docker compose -f compose.dev.yaml down -v",
+    "db:seed": "pnpm --filter @starter/api db:seed"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

@@ -32,6 +32,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let status: number;
     let error: string;
     let message: string;
+    let code: string | undefined;
     let details: ErrorResponse['details'];
 
     if (exception instanceof ZodValidationException) {
@@ -46,12 +47,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else if (exception instanceof HttpException) {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
-      error = exceptionResponse?.constructor?.name ?? 'Error';
+      const responseObj =
+        typeof exceptionResponse === 'object' ? (exceptionResponse as Record<string, unknown>) : {};
+      error = (responseObj.error as string | undefined) ?? exception.message;
       message =
         typeof exceptionResponse === 'string'
           ? exceptionResponse
-          : ((exceptionResponse as Record<string, unknown>)?.message?.toString() ??
-            exception.message);
+          : (responseObj.message?.toString() ?? exception.message);
+      code = responseObj.code as string | undefined;
     } else {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       error = 'Internal Server Error';
@@ -70,6 +73,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode: status,
       error,
       message,
+      ...(code && { code }),
       requestId,
       path,
       timestamp: new Date().toISOString(),

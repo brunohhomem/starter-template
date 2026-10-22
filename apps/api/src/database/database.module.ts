@@ -7,7 +7,8 @@ import {
   type Provider,
 } from '@nestjs/common';
 import { Pool } from 'pg';
-import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { drizzle, type NodePgDatabase, type NodePgTransaction } from 'drizzle-orm/node-postgres';
+import type { TablesRelationalConfig } from 'drizzle-orm';
 import type { Env } from '../config/env.schema';
 import { ENV } from '../config/app-config.module';
 import { buildDatabaseConfig } from './database-config';
@@ -17,6 +18,10 @@ import * as schema from './schema';
 export const DATABASE = Symbol('DATABASE');
 
 export type Database = NodePgDatabase<typeof schema>;
+export type DatabaseTransaction = NodePgTransaction<
+  Record<string, unknown>,
+  TablesRelationalConfig
+>;
 
 /**
  * Dona do pool de conexões. Existe como provider para o Nest invocar

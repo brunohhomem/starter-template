@@ -6,7 +6,8 @@ import { loadEnv } from '../src/config/load-env';
 
 /**
  * Lista as tabelas dos schemas da aplicação em `information_schema`
- * e executa `TRUNCATE ... RESTART IDENTITY CASCADE`, excluindo o schema `drizzle`.
+ * e executa `TRUNCATE ... RESTART IDENTITY CASCADE`.
+ * A tabela `system_settings` é truncada e re-seedada com registration_enabled=true para NODE_ENV=test.
  * Nenhuma tabela é citada à mão.
  */
 export async function resetDatabase(): Promise<void> {
@@ -28,6 +29,12 @@ export async function resetDatabase(): Promise<void> {
     const tableNames = tables.map((tableName) => `"${tableName}"`).join(', ');
     await db.execute(`TRUNCATE TABLE ${tableNames} RESTART IDENTITY CASCADE`);
   }
+
+  // Re-seed system_settings with registration_enabled=true for test environment
+  await pool.query(`
+    INSERT INTO system_settings (key, value) VALUES ('registration_enabled', 'true'::jsonb)
+    ON CONFLICT (key) DO UPDATE SET value = 'true'::jsonb
+  `);
 }
 
 /**

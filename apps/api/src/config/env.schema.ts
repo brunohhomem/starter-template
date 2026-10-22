@@ -29,6 +29,17 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(44),
   COOKIE_SECRET: z.string().min(44),
   ENCRYPTION_KEY: z.string().length(44),
+  BACKUP_ENCRYPTION_KEY: z.string().length(44),
+
+  // Auth (F2)
+  ADMIN_EMAIL: z.string().email(),
+  ADMIN_INITIAL_PASSWORD: z.string().optional(),
+  WEB_ORIGIN: z.string().url().default('http://localhost:3000'),
+  COOKIE_SECURE: z.coerce.boolean().optional(),
+  AUTH_ACCESS_TTL_MINUTES: z.coerce.number().int().min(1).max(120).default(15),
+  AUTH_REFRESH_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(7),
+  AUTH_REFRESH_REUSE_GRACE_SECONDS: z.coerce.number().int().min(0).max(60).default(10),
+  AUTH_BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -45,7 +56,21 @@ export function validateEnv(rawEnv: Record<string, string | undefined>): Env {
     const message = ['Variáveis de ambiente inválidas ou ausentes:', ...issues].join('\n');
     throw new Error(message);
   }
-  return result.data;
+  const env = result.data;
+
+  // TRUST_PROXY_HOPS é obrigatório em produção (sem padrão)
+  if (env.NODE_ENV === 'production' && rawEnv.TRUST_PROXY_HOPS === undefined) {
+    throw new Error(
+      'Variáveis de ambiente inválidas ou ausentes:\n  - TRUST_PROXY_HOPS: obrigatório em produção',
+    );
+  }
+
+  // COOKIE_SECURE padrão: true em produção, false caso contrário
+  if (env.COOKIE_SECURE === undefined) {
+    env.COOKIE_SECURE = env.NODE_ENV === 'production';
+  }
+
+  return env;
 }
 
 export function buildTestDbName(env: Env): string {

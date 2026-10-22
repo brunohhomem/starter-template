@@ -17,6 +17,8 @@ allowBuilds:
   supertest: true
   '@scarf/scarf': true
   '@swc/core': true
+  bcrypt@6.0.0: true
+  bcrypt: true
 
 minimumReleaseAgeExclude:
   - '@turbo/darwin-64@2.11.10'
