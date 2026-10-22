@@ -5,12 +5,19 @@ import { AppConfigModule, ENV } from './config/app-config.module';
 import { DatabaseModule } from './database/database.module';
 import { LoggingModule } from './common/logging/logger.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { RedisModule } from './redis/redis.module';
 import { ZodValidationPipe } from './common/pipes/zod-validation.pipe';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ZodSerializerInterceptor } from 'nestjs-zod';
 
 @Module({
-  imports: [AppConfigModule, LoggingModule.forRoot(), DatabaseModule, SettingsModule],
+  imports: [
+    AppConfigModule,
+    LoggingModule.forRoot(),
+    DatabaseModule,
+    RedisModule.forRoot(),
+    SettingsModule,
+  ],
   providers: [
     { provide: APP_PIPE, useClass: ZodValidationPipe },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
