@@ -11,6 +11,10 @@ Este repositório é o template base de um monorepo pnpm. A API é NestJS (`apps
 - `pnpm format` e `pnpm format:check`
 - `pnpm --filter @starter/api start:dev`
 - `pnpm --filter @starter/web dev`
+- `pnpm infra:up` / `pnpm infra:down` / `pnpm infra:logs` / `pnpm infra:reset`
+- `pnpm keys:generate` [--file <caminho>] / `pnpm keys:rotate <NOME>` [--yes]
+- `pnpm db:generate <nome>` / `pnpm db:migrate` / `pnpm db:studio`
+- `pnpm test:integration`
 
 ## Fluxo
 
@@ -40,5 +44,6 @@ Este repositório é o template base de um monorepo pnpm. A API é NestJS (`apps
 - `apps/api`: `docs/conventions/backend.md`.
 - `apps/web`: `docs/conventions/frontend.md`.
 - Testes: `docs/conventions/testing.md`.
+- Banco: `docs/conventions/database.md`.
 - Decisões: `docs/adr/`.
 - Ao mexer em versões, ESLint, Husky ou CI, leia `docs/conventions/tooling.md`.
