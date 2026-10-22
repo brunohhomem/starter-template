@@ -564,7 +564,7 @@ describe('Auth integration (T11)', () => {
       refreshCookie = cookies.find((cookie) => cookie.startsWith('refresh_token='))!.split(';')[0];
     });
 
-    it('revoga sessão e limpa cookies (Max-Age=0)', async () => {
+    it('revoga sessão e limpa cookies (Max-Age=0 ou Expires passado)', async () => {
       const response = await request(app.getHttpServer())
         .post('/api/auth/logout')
         .set('Cookie', [accessCookie, refreshCookie])
@@ -574,8 +574,12 @@ describe('Auth integration (T11)', () => {
       const clearedAccess = cookies.find((cookie) => cookie.startsWith('access_token='));
       const clearedRefresh = cookies.find((cookie) => cookie.startsWith('refresh_token='));
 
-      expect(clearedAccess).toMatch(/Max-Age=0/);
-      expect(clearedRefresh).toMatch(/Max-Age=0/);
+      // clearCookie usa Expires passado; cookie(maxAge:0) usa Max-Age=0. Ambos são válidos.
+      const cookieCleared = (cookie: string) => /Max-Age=0|Expires=.*1970/.test(cookie);
+      expect(clearedAccess).toBeDefined();
+      expect(clearedRefresh).toBeDefined();
+      expect(cookieCleared(clearedAccess!)).toBe(true);
+      expect(cookieCleared(clearedRefresh!)).toBe(true);
 
       // Verifica que sessão foi revogada no banco
       const pool = getTestPool();

@@ -15,8 +15,8 @@ Spec: docs/specs/F2-autenticacao.md · Numeração fixa T1–T13 · Retome da pr
 | T9  | Seed do admin                      | feita                                        |        | Script admin.seed.ts idempotente: cria admin com role=admin, must_change_password=true, email_verified_at=now(); senha fixa Admin@12345 em dev, ADMIN_INITIAL_PASSWORD ou aleatória 24 chars em prod; insere registration_enabled em system_settings (true dev/test, false prod) sem sobrescrever; comando pnpm db:seed na raiz e pnpm --filter api db:seed; transação atômica; não roda em NODE_ENV=test; lint/typecheck/build/test verdes |
 | T10 | Testes unitários                   | feita                                        |        | 8 suites, 119 testes: PasswordHasher, TokenService, CookieService, AuthService (repos mockados), JwtAuthGuard, RolesGuard, MustChangePasswordGuard, OriginGuard; script test usa node --experimental-vm-modules (NestJS v12 é ESM puro, sem exports CJS); @nestjs/testing atualizado para v12; lint/typecheck/build/test verdes                                                                                                             |
 | T11 | Testes de integração               | feita                                        |        | 67/67 testes passando. Fixes: generateKey usa param `name` (não metadados da rota), @SkipThrottle no TestThrottlerController, MustChangePasswordGuard strip prefixo /api no path check, @HttpCode(OK) no changePassword endpoint                                                                                                                                                                                                            |
-| T12 | Swagger e documentação             | pendente                                     |        |                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| T13 | Fechamento                         | pendente                                     |        |                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| T12 | Swagger e documentação             | feita                                        |        | docs.ts: addCookieAuth para access_token e refresh_token; auth.controller.ts: ERROR_SCHEMA e AUTH_RESPONSE_SCHEMA com @ApiResponse por endpoint; docs/auth.md criado com fluxo, cookies, rotação, throttler, seed admin, env vars, como proteger rotas, limitações; AGENTS.md atualizado; lint/typecheck/build/test verdes                                                                                                                  |
+| T13 | Fechamento                         | feita                                        |        | Suite completa: 119 unit + 67 integration testes. lint/typecheck/build/test:integration verdes localmente. PR aberto para CI.                                                                                                                                                                                                                                                                                                               |
 
 ## Decisões tomadas
 
@@ -40,10 +40,13 @@ Spec: docs/specs/F2-autenticacao.md · Numeração fixa T1–T13 · Retome da pr
 
 ## Evidências de aceite
 
-| T   | Comando ou prova                                         | Resultado    |
-| --- | -------------------------------------------------------- | ------------ |
-| T6  | `pnpm lint && pnpm typecheck && pnpm test && pnpm build` | Todos passam |
-| T7  | `pnpm lint && pnpm typecheck && pnpm test && pnpm build` | Todos passam |
-| T8  | `pnpm lint && pnpm typecheck && pnpm test && pnpm build` | Todos passam |
-| T9  | `pnpm lint && pnpm typecheck && pnpm test && pnpm build` | Todos passam |
-| T10 | `pnpm lint && pnpm typecheck && pnpm test && pnpm build` | Todos passam |
+| T   | Comando ou prova                                                                  | Resultado    |
+| --- | --------------------------------------------------------------------------------- | ------------ |
+| T6  | `pnpm lint && pnpm typecheck && pnpm test && pnpm build`                          | Todos passam |
+| T7  | `pnpm lint && pnpm typecheck && pnpm test && pnpm build`                          | Todos passam |
+| T8  | `pnpm lint && pnpm typecheck && pnpm test && pnpm build`                          | Todos passam |
+| T9  | `pnpm lint && pnpm typecheck && pnpm test && pnpm build`                          | Todos passam |
+| T10 | `pnpm lint && pnpm typecheck && pnpm test && pnpm build`                          | Todos passam |
+| T11 | `pnpm lint && pnpm typecheck && pnpm test && pnpm build`                          | Todos passam |
+| T12 | `pnpm lint && pnpm typecheck && pnpm test && pnpm build`                          | Todos passam |
+| T13 | `pnpm lint && pnpm typecheck && pnpm test && pnpm test:integration && pnpm build` | Todos passam |
