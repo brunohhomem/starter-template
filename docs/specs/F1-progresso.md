@@ -17,7 +17,7 @@ Ao retomar, leia este arquivo e continue da primeira tarefa não concluída, sem
 | T7       | Entity `system_settings`                             | feita                           | `00871ca` |                                                                                                                                          |
 | T8       | Bootstrap compartilhado `configureApp`               | feita                           | `52d4a2c` |                                                                                                                                          |
 | T9       | Logs estruturados                                    | feita sob o nome "T5" do agente | `b1e5cc0` | **Executar o aceite da T9** (request ID válido e inválido, redação, formato por ambiente, `/api/health` fora do log)                     |
-| T10      | Validação e erros padronizados                       | pendente                        | —         | Depende da T4                                                                                                                            |
+| T10      | Validação e erros padronizados                       | feita                           | `1c1047f` | `ZodValidationPipe` global, `AllExceptionsFilter` global, `ZodSerializerInterceptor`; resposta segue `errorResponseSchema` do shared     |
 | T11      | Módulo de Redis                                      | pendente                        | —         |                                                                                                                                          |
 | T12      | Health                                               | pendente                        | —         |                                                                                                                                          |
 | T13      | Swagger                                              | pendente                        | —         |                                                                                                                                          |
@@ -48,9 +48,10 @@ Ao retomar, leia este arquivo e continue da primeira tarefa não concluída, sem
 
 ## Decisões tomadas
 
-| Data       | Decisão                                                                             | Motivo                                                                                                                                                        |
-| ---------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-21 | T4: schemas de erro e paginação em `packages/shared/src/error.ts` e `pagination.ts` | Segue a especificação da T4; tipos inferidos com zod; `paginatedResponseSchema` é factory que aceita schema do item; testes cobrem parsing, validação e tipos |
+| Data       | Decisão                                                                              | Motivo                                                                                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-21 | T4: schemas de erro e paginação em `packages/shared/src/error.ts` e `pagination.ts`  | Segue a especificação da T4; tipos inferidos com zod; `paginatedResponseSchema` é factory que aceita schema do item; testes cobrem parsing, validação e tipos          |
+| 2026-10-21 | T10: `ZodValidationPipe` + `AllExceptionsFilter` + `ZodSerializerInterceptor` global | `nestjs-zod` fornece `ZodValidationException` com `details` por campo; filtro mapeia HttpException→400, outros→500 sem stack em produção; `requestId` em toda resposta |
 
 ## Evidências de aceite
 
@@ -59,3 +60,6 @@ Ao retomar, leia este arquivo e continue da primeira tarefa não concluída, sem
 | T4  | `pnpm test --filter @starter/shared`      | 23 testes passando |
 | T4  | `pnpm lint --filter @starter/shared`      | 0 erros            |
 | T4  | `pnpm typecheck --filter @starter/shared` | OK                 |
+| T10 | `pnpm test --filter @starter/api`         | 25 testes passando |
+| T10 | `pnpm lint --filter @starter/api`         | 0 erros (2 warns)  |
+| T10 | `pnpm typecheck --filter @starter/api`    | OK                 |
