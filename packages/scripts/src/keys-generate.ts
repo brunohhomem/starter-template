@@ -187,11 +187,28 @@ async function main(): Promise<void> {
     }
   }
 
+  // Propaga USER_DEFINED_KEYS do process.env para o .env quando ainda estão vazios
+  const injected: string[] = [];
+  for (const name of USER_DEFINED_KEYS) {
+    const inFile = envMap.get(name);
+    const inEnv = process.env[name];
+    if ((!inFile || inFile.trim() === '') && inEnv && inEnv.trim() !== '') {
+      envMap.set(name, inEnv);
+      injected.push(name);
+    }
+  }
+
   writeEnvAtomically(envMap, originalContent);
 
   if (generated.length > 0) {
     console.log('Chaves geradas:');
     for (const name of generated) {
+      console.log(`  ✓ ${name}`);
+    }
+  }
+  if (injected.length > 0) {
+    console.log('Variáveis copiadas do ambiente:');
+    for (const name of injected) {
       console.log(`  ✓ ${name}`);
     }
   }
