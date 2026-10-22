@@ -372,9 +372,7 @@ export class AuthService {
     this.cookieService.clearAuthCookies(res);
   }
 
-  async me(
-    userId: string,
-  ): Promise<{
+  async me(userId: string): Promise<{
     user: {
       id: string;
       email: string;
