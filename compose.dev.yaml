@@ -18,7 +18,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7.4
+    image: redis:8.2.6-bookworm
     container_name: starter-redis
     command:
       [

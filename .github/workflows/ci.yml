@@ -107,7 +107,7 @@ jobs:
 
       - name: Iniciar Redis com senha
         run: |
-          docker run -d --name ci-redis -p 6379:6379 redis:7.4 redis-server --requirepass redis
+          docker run -d --name ci-redis -p 6379:6379 redis:8.2.6-bookworm redis-server --requirepass redis
           timeout 30 sh -c 'until docker exec ci-redis redis-cli -a redis ping 2>/dev/null | grep -q PONG; do sleep 1; done'
 
       - name: Gerar .env para testes (exercita keys:generate no CI)

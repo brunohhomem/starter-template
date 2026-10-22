@@ -23,6 +23,12 @@ Este repositório é o template base de um monorepo pnpm. A API é NestJS (`apps
 3. A spec precisa estar aprovada antes da execução.
 4. Não implemente uma fase sem spec aprovada.
 
+## Arquivos temporários gerados por scripts
+
+- `keys:rotate` cria `.env.bak-<timestamp>` como backup antes de rotacionar. **Apague o arquivo após verificar que a rotação funcionou.** Nunca commite nem deixe acumulado no workspace.
+- `keys:generate` cria `.env.tmp` durante a escrita atômica. O arquivo é sobrescrito a cada execução; apague se ficar órfão.
+- Ambos já estão cobertos pelo `.gitignore` (regra `.env*`), mas acúmulo no disco é indesejado.
+
 ## Regras inegociáveis
 
 1. Responsabilidade única. O checklist está em `docs/conventions/backend.md`.

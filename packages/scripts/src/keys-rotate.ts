@@ -195,6 +195,7 @@ async function main(): Promise<void> {
   const backupFile = `${ENV_FILE}.bak-${timestamp}`;
   copyFileSync(ENV_FILE, backupFile);
   console.log(`Backup criado: ${backupFile}`);
+  console.log(`  ⚠ Apague o backup após verificar a rotação: rm ${backupFile}`);
 
   // Show consequence
   console.log(`\n⚠️  Consequência da rotação de ${keyName}:`);
