@@ -70,6 +70,20 @@ const nestConfig = [
       'no-restricted-syntax': 'off',
     },
   },
+  {
+    files: ['test/**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'off',
+      '@typescript-eslint/no-misused-promises': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      'no-restricted-syntax': 'off',
+    },
+  },
 ];
 
 export default nestConfig;

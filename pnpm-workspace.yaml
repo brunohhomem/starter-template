@@ -16,6 +16,7 @@ allowBuilds:
   helmet: true
   supertest: true
   '@scarf/scarf': true
+  '@swc/core': true
 
 minimumReleaseAgeExclude:
   - '@turbo/darwin-64@2.11.10'

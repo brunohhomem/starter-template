@@ -1,0 +1,11 @@
+{
+  "extends": "@starter/config/tsconfig/node.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "isolatedModules": true,
+    "types": ["node", "jest", "vitest"],
+    "noEmit": true
+  },
+  "include": ["test/**/*.ts", "src/**/*.ts"]
+}

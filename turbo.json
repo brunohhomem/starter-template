@@ -13,7 +13,24 @@
       "dependsOn": ["^build"]
     },
     "test:integration": {
-      "cache": false
+      "cache": false,
+      "env": [
+        "DB_HOST",
+        "DB_PORT",
+        "DB_USER",
+        "DB_PASSWORD",
+        "DB_NAME",
+        "TEST_DB_NAME",
+        "REDIS_HOST",
+        "REDIS_PORT",
+        "REDIS_PASSWORD",
+        "JWT_ACCESS_SECRET",
+        "JWT_REFRESH_SECRET",
+        "COOKIE_SECRET",
+        "ENCRYPTION_KEY",
+        "LOG_LEVEL",
+        "NODE_ENV"
+      ]
     },
     "test:e2e": {
       "cache": false

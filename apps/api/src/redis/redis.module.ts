@@ -1,4 +1,4 @@
-import { Module, OnApplicationShutdown, Inject } from '@nestjs/common';
+import { Global, Module, Inject } from '@nestjs/common';
 import Redis from 'ioredis';
 import type { Env } from '../config/env.schema';
 import { ENV, AppConfigModule } from '../config/app-config.module';
@@ -9,9 +9,11 @@ export const REDIS = Symbol('REDIS');
  * Módulo de Redis com ioredis.
  * Conexão única compartilhada; BullMQ (F3) usará conexões próprias
  * com `maxRetriesPerRequest: null` sobre os mesmos `REDIS_*`.
+ * Global para que REDIS esteja disponível em todos os módulos (health, throttler, bullmq).
  */
+@Global()
 @Module({})
-export class RedisModule implements OnApplicationShutdown {
+export class RedisModule {
   static forRoot() {
     return {
       module: RedisModule,
@@ -39,14 +41,22 @@ export class RedisModule implements OnApplicationShutdown {
             return client;
           },
         },
+        // Provider para OnApplicationShutdown que usa o REDIS
+        {
+          provide: 'REDIS_SHUTDOWN',
+          inject: [REDIS],
+          useFactory: (redis: Redis) => ({
+            async onApplicationShutdown() {
+              await redis.quit();
+            },
+          }),
+        },
       ],
       exports: [REDIS],
     };
   }
 
-  constructor(@Inject(REDIS) private readonly redis: Redis) {}
-
-  async onApplicationShutdown(): Promise<void> {
-    await this.redis.quit();
-  }
+  // Não implementa OnApplicationShutdown diretamente para evitar
+  // injeção de REDIS no constructor da classe do módulo.
+  // O shutdown é feito pelo provider 'REDIS_SHUTDOWN'.
 }
