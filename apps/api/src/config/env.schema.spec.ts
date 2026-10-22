@@ -19,6 +19,13 @@ const validRawEnv: Record<string, string | undefined> = {
   JWT_REFRESH_SECRET: 'validrefreshsecret12345678901234567890123456789012345678901234',
   COOKIE_SECRET: 'validcookiesecret123456789012345678901234567890123456789012345678',
   ENCRYPTION_KEY: 'ZGV2ZW5jcnlwdGlvbmtleTEyMzQ1Njc4OTAxMjM0NQ==',
+  BACKUP_ENCRYPTION_KEY: 'h7SHRT35wbCIUtIQXapP/n4B/Rga8hsnU3+00wUm3pI=',
+  ADMIN_EMAIL: 'admin@example.com',
+  WEB_ORIGIN: 'http://localhost:3000',
+  AUTH_ACCESS_TTL_MINUTES: '15',
+  AUTH_REFRESH_TTL_DAYS: '7',
+  AUTH_REFRESH_REUSE_GRACE_SECONDS: '10',
+  AUTH_BCRYPT_ROUNDS: '12',
 };
 
 const validParsedEnv: Env = {
@@ -40,6 +47,15 @@ const validParsedEnv: Env = {
   JWT_REFRESH_SECRET: 'validrefreshsecret12345678901234567890123456789012345678901234',
   COOKIE_SECRET: 'validcookiesecret123456789012345678901234567890123456789012345678',
   ENCRYPTION_KEY: 'ZGV2ZW5jcnlwdGlvbmtleTEyMzQ1Njc4OTAxMjM0NQ==',
+  BACKUP_ENCRYPTION_KEY: 'h7SHRT35wbCIUtIQXapP/n4B/Rga8hsnU3+00wUm3pI=',
+  ADMIN_EMAIL: 'admin@example.com',
+  ADMIN_INITIAL_PASSWORD: undefined,
+  WEB_ORIGIN: 'http://localhost:3000',
+  COOKIE_SECURE: false,
+  AUTH_ACCESS_TTL_MINUTES: 15,
+  AUTH_REFRESH_TTL_DAYS: 7,
+  AUTH_REFRESH_REUSE_GRACE_SECONDS: 10,
+  AUTH_BCRYPT_ROUNDS: 12,
 };
 
 describe('env.schema', () => {
@@ -86,5 +102,11 @@ describe('env.schema', () => {
     const prodRawEnv = { ...validRawEnv, NODE_ENV: 'production', TRUST_PROXY_HOPS: '1' };
     const env = validateEnv(prodRawEnv);
     expect(env.TRUST_PROXY_HOPS).toBe(1);
+    expect(env.COOKIE_SECURE).toBe(true);
+  });
+
+  it('COOKIE_SECURE default false em development', () => {
+    const env = validateEnv(validRawEnv);
+    expect(env.COOKIE_SECURE).toBe(false);
   });
 });
