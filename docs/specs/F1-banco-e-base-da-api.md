@@ -4,6 +4,7 @@
 | ---------------------- | ----------------------------------------------------------------------------------- |
 | Status                 | Aguardando aprovação para execução                                                  |
 | Data                   | 2026-10-21                                                                          |
+| Revisão                | v2: modo de execução autônoma (3.1), arquivo de progresso e numeração fixa          |
 | ADR de origem          | `docs/adr/0001-template-base-monorepo.md` (v2)                                      |
 | Pré-requisito          | F0 **mergeada na `main`** (inclui a correção das fixtures do lint e o ajuste de CI) |
 | Executor               | Cursor                                                                              |
@@ -30,16 +31,41 @@ Entregar a **base da API** sobre a fundação da F0: infraestrutura local (Postg
 | Endpoint de health **detalhado** para admin                         | F2/F6 (precisa de auth) |
 | Envio da chave de backup por e-mail                                 | F3                      |
 
-Não instale nada fora da seção 8. Se precisar, **pare e pergunte**.
+Não instale nada fora da seção 8, a menos que não exista alternativa dentro dela (3.1, parada obrigatória c).
 
 ## 3. Regras de execução
 
-1. Mesmas regras da seção 4 da spec da F0 (um commit por tarefa em Conventional Commits, nunca usar `eslint-disable`/`@ts-ignore`, não afrouxar regra, parar e perguntar em conflito, docs em pt-BR).
+1. Mesmas regras da seção 4 da spec da F0 (um commit por tarefa em Conventional Commits, nunca usar `eslint-disable`/`@ts-ignore`, não afrouxar regra, docs em pt-BR). **Quando a spec da F0 mandar "parar e perguntar", vale a seção 3.1 desta spec**, que prevalece.
 2. Respeite as **camadas do ADR**: `entity`, `dto`, `repository`, `service`, `controller`, cada arquivo com uma responsabilidade. Nada de acesso a dados fora de `*.repository.ts`.
 3. Use a versão estável mais recente de cada dependência, **um único `zod` (mesma major) em todo o workspace** (o `nestjs-zod` exige), e registre as versões no `CHANGELOG.md`.
 4. **Nenhum segredo vai para o Git, para logs ou para a saída dos scripts** (exceção única e explícita: a chave de backup, na T2).
 5. Onde o ADR afirma algo que esta spec manda **provar com teste** (ex.: migration transacional), se o teste falhar, **pare e reporte**: a decisão do ADR depende disso.
 6. Ao final, entregue o relatório da seção 12.
+
+### 3.1 Modo autônomo (leia antes de começar)
+
+**Objetivo:** executar de T1 a T16 **sem interrupções**, até cumprir a Definição de Pronto (seção 11). O usuário não acompanha em tempo real e não quer precisar escrever "continue".
+
+1. **A spec é a autorização.** Instalar as dependências da seção 8, criar e alterar os arquivos descritos nas tarefas, rodar comandos, criar a branch e fazer commits **já estão autorizados**. Não peça confirmação para nada disso.
+2. **Nunca termine uma resposta com resumo de status seguido de pergunta** ("quero confirmar antes de...", "posso seguir?", "próximo passo: ..."). Terminou uma tarefa: registre no progresso e **comece a próxima na mesma execução**. Só existe resposta final quando a seção 11 estiver cumprida ou quando houver uma parada obrigatória (item 3).
+3. **Paradas obrigatórias (as únicas):**
+
+| #   | Parada                                                                                                                                    |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| a   | Falha da prova de atomicidade de migration (T6)                                                                                           |
+| b   | Conflito direto entre duas regras do ADR ou da spec que impeça cumprir a tarefa, sem opção neutra                                         |
+| c   | Dependência fora da seção 8 sem nenhuma alternativa dentro dela                                                                           |
+| d   | Ação que exija credencial, aprovação externa ou acesso que você não tem (ex.: `gh` sem login, Docker indisponível)                        |
+| e   | Ação destrutiva fora do escopo: apagar volume de dados do usuário, reescrever histórico já enviado ao remoto, force push, apagar branches |
+
+Ao parar: escreva o motivo, o que já foi feito e a opção recomendada. **Não pare por nada que não esteja nesta tabela.**
+
+4. **Todo o resto você decide:** ambiguidade, nomes, detalhes de implementação, versões, estrutura de testes. Escolha a opção que melhor segue o ADR e as convenções, siga em frente e **registre a decisão** no progresso e no relatório. Dúvida não bloqueia: use o padrão proposto na spec.
+5. **Falha de comando, teste ou lint não é motivo de parada.** Diagnostique, corrija e rode de novo. Só depois de **3 tentativas distintas** sem sucesso no mesmo problema aplique o item 3 (b ou d) e reporte.
+6. **Numeração fixa.** Use sempre os números T1 a T16 desta spec, sem renumerar, fundir ou reordenar tarefas. Se parte de uma tarefa foi feita sob outro número, mantenha o número da spec, registre no progresso o que foi antecipado e **execute o aceite da tarefa original quando chegar nela**. Em especial: contratos de erro e paginação em `packages/shared` são a **T4**; logs são a **T9**; validação e erros são a **T10**.
+7. **Arquivo de progresso.** Mantenha `docs/specs/F1-progresso.md`, com T1 a T16 (status, hash do commit, evidência do aceite) e as decisões tomadas, e **commite a cada tarefa**. Ao retomar depois de qualquer interrupção ou perda de contexto, **leia esse arquivo e continue da primeira tarefa não concluída**, sem pedir confirmação. No último commit, copie o conteúdo para a descrição da PR e remova o arquivo.
+8. **Marque uma tarefa como concluída só depois de executar os comandos do aceite** e ver o resultado.
+9. **Comunicação:** durante a execução, no máximo uma linha de progresso por tarefa, **nunca terminando em pergunta**. A mensagem longa é o relatório final (seção 12).
 
 ## 4. Fatos verificados (resolvem pendências do ADR)
 
@@ -364,7 +390,7 @@ Adicionar ao `ci.yml` um job `integration`, **separado** do `verify`.
 | `apps/api`         | `drizzle-orm`, `drizzle-kit` (dev), `pg`, `@types/pg`, `ioredis`, `zod`, `nestjs-zod`, `@nestjs/swagger`, `@nestjs/terminus`, `nestjs-pino`, `pino`, `pino-http`, `pino-pretty` (dev), `helmet`, `supertest`, `@types/supertest`, `tsx` (dev) |
 | Raiz               | Nenhuma nova, salvo o que o Turbo/CI exigir (perguntar)                                                                                                                                                                                       |
 
-Qualquer outro pacote exige pergunta antes.
+Qualquer outro pacote só é permitido se não houver alternativa dentro da lista (3.1, parada obrigatória c); nesse caso registre a decisão no progresso.
 
 ## 9. Decisões delegadas ao executor
 
@@ -406,16 +432,18 @@ Na branch limpa e em um **clone novo**:
 8. O teste de atomicidade de migrations passou (ou foi reportado)
 9. CI verde com os **dois** jobs (`verify` e `integration`), e provado que o job de integração falha com uma migration quebrada
 10. `git ls-files --eol` sem `crlf`; nenhum segredo no Git; nenhum `eslint-disable`
+11. `docs/specs/F1-progresso.md` com T1 a T16 concluídas e evidências, seu conteúdo copiado para a descrição da PR e o arquivo removido no último commit
 
 ## 12. Relatório que o Cursor deve devolver
 
-| Seção                | Conteúdo                                                    |
-| -------------------- | ----------------------------------------------------------- |
-| Resultado por tarefa | T1 a T16: concluída, parcial ou bloqueada                   |
-| Evidências           | Saída dos comandos da seção 11 e link do CI                 |
-| Prova de atomicidade | Resultado do teste de migration (T6) e o que foi observado  |
-| Nomes de migration   | Como a versão instalada do drizzle-kit nomeia os arquivos   |
-| Versões              | Tabela das versões e tags de imagem escolhidas              |
-| Decisões delegadas   | Escolha e motivo para cada item da seção 9                  |
-| Desvios e conflitos  | Qualquer regra do ADR que conflitou ou tarefa alterada      |
-| Warnings de métricas | Lista dos warnings atuais (já há código real para calibrar) |
+| Seção                | Conteúdo                                                     |
+| -------------------- | ------------------------------------------------------------ |
+| Resultado por tarefa | T1 a T16: concluída, parcial ou bloqueada                    |
+| Evidências           | Saída dos comandos da seção 11 e link do CI                  |
+| Prova de atomicidade | Resultado do teste de migration (T6) e o que foi observado   |
+| Nomes de migration   | Como a versão instalada do drizzle-kit nomeia os arquivos    |
+| Versões              | Tabela das versões e tags de imagem escolhidas               |
+| Decisões delegadas   | Escolha e motivo para cada item da seção 9                   |
+| Desvios e conflitos  | Qualquer regra do ADR que conflitou ou tarefa alterada       |
+| Warnings de métricas | Lista dos warnings atuais (já há código real para calibrar)  |
+| Decisões autônomas   | Toda decisão tomada sob a regra 4 da seção 3.1, com o motivo |
