@@ -1,4 +1,5 @@
 import { Controller, Get, Inject, HttpException, HttpStatus } from '@nestjs/common';
+import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { REDIS } from '../redis/redis.module';
 import Redis from 'ioredis';
 import { DATABASE, type Database } from '../database/database.module';
@@ -13,6 +14,7 @@ const API_VERSION = require('../../package.json').version as string;
  * Sem detalhes de componentes no corpo da resposta.
  * HTTP 200 quando saudável, 503 quando não.
  */
+@ApiTags('health')
 @Controller('health')
 export class HealthController {
   constructor(
@@ -21,6 +23,15 @@ export class HealthController {
   ) {}
 
   @Get()
+  @ApiResponse({
+    status: 200,
+    description: 'Health check OK',
+    schema: {
+      type: 'object',
+      properties: { status: { type: 'string', enum: ['ok'] }, version: { type: 'string' } },
+    },
+  })
+  @ApiResponse({ status: 503, description: 'Service unavailable' })
   async check() {
     const [dbHealthy, redisHealthy] = await Promise.all([this.checkDatabase(), this.checkRedis()]);
 
