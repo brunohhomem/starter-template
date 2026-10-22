@@ -7,6 +7,16 @@ engineStrict: true
 allowBuilds:
   unrs-resolver: true
   '@parcel/watcher': true
+  esbuild: true
+  nestjs-pino: true
+  ioredis: true
+  '@nestjs/terminus': true
+  '@nestjs/swagger': true
+  nestjs-zod: true
+  helmet: true
+  supertest: true
+  '@scarf/scarf': true
+  '@swc/core': true
 
 minimumReleaseAgeExclude:
   - '@turbo/darwin-64@2.11.10'

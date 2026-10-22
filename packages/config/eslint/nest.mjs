@@ -42,6 +42,48 @@ const nestConfig = [
       ],
     },
   },
+  {
+    files: ['apps/api/drizzle.config.ts', 'drizzle.config.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'off',
+      '@typescript-eslint/no-misused-promises': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      'no-restricted-syntax': 'off',
+    },
+  },
+  {
+    files: ['scripts/**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'off',
+      '@typescript-eslint/no-misused-promises': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      'no-restricted-syntax': 'off',
+    },
+  },
+  {
+    files: ['**/test/**/*.ts', 'test/**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'off',
+      '@typescript-eslint/no-misused-promises': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      'no-restricted-syntax': 'off',
+    },
+  },
 ];
 
 export default nestConfig;

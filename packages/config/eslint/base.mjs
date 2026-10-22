@@ -22,6 +22,8 @@ const metricExceptions = [
   '**/*.config.*',
 ];
 
+const envAllowedPaths = ['apps/api/src/config/**/*.ts', 'packages/scripts/**/*.ts'];
+
 const baseConfig = tseslint.config(
   {
     ignores: ['**/dist/**', '**/.next/**', '**/coverage/**', '**/.turbo/**', '**/next-env.d.ts'],
@@ -86,7 +88,7 @@ const baseConfig = tseslint.config(
         { selector: 'function', format: ['camelCase', 'PascalCase'] },
         { selector: 'parameter', format: ['camelCase'], leadingUnderscore: 'allow' },
         { selector: 'typeLike', format: ['PascalCase'] },
-        { selector: 'objectLiteralProperty', format: ['camelCase'] },
+        { selector: 'objectLiteralProperty', format: ['camelCase', 'UPPER_CASE'] },
       ],
     },
   },

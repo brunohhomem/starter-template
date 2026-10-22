@@ -44,8 +44,32 @@ for (const config of [...baseConfig, ...nestConfig, ...nextConfig]) {
 
 // Raiz de um monorepo mínimo. O cwd do teste e o tsconfigRootDir ficam aqui para as
 // regras por caminho e o projectService verem apps/api e apps/web sem gravar nos apps reais.
+const processEnvAllowedPaths = ['apps/api/src/config/**', 'packages/scripts/**'];
+
+const processEnvRestriction = {
+  files: ['**/*.{ts,tsx,js,mjs,cjs}'],
+  rules: {
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector: "MemberExpression[object.name='process'][property.name='env']",
+        message: 'Acesso direto a process.env é proibido. Use o módulo de config (ENV token).',
+      },
+    ],
+  },
+};
+
+const processEnvAllowed = {
+  files: processEnvAllowedPaths,
+  rules: {
+    'no-restricted-syntax': 'off',
+  },
+};
+
 export default [
   ...ignoreBlocks,
+  processEnvRestriction,
+  processEnvAllowed,
   ...scope(baseConfig, ''),
   ...scope(nestConfig, 'apps/api/'),
   ...scope(nextConfig, 'apps/web/'),

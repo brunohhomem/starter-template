@@ -1,0 +1,10 @@
+{
+  "extends": "@starter/config/tsconfig/node.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "isolatedModules": true,
+    "types": ["node"]
+  },
+  "include": ["scripts/**/*.ts"]
+}

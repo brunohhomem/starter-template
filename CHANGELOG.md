@@ -17,6 +17,14 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Jest 30.5.2, `@jest/globals` 30.5.2, Vitest 5.0.5, `@testing-library/react` 16.3.3, `jsdom` 30.1.3 e zod 4.6.7
 - Turborepo 2.11.10, Prettier 3.9.10, Husky 9.1.7 e lint-staged 17.6.0
 - GitHub Actions nas majors `actions/checkout` v7, `actions/setup-node` v7, `actions/cache` v6 e `pnpm/action-setup` v6
+- **F1 — Banco e base da API:**
+  - `drizzle-orm` 0.44.2, `drizzle-kit` 0.31.1, `pg` 8.13.1, `@types/pg` 8.11.10
+  - `ioredis` 6.0.0, `nestjs-pino` 4.2.0, `pino` 9.5.0, `pino-http` 10.3.0, `pino-pretty` 13.0.0
+  - `@nestjs/swagger` 12.0.2, `@nestjs/terminus` 12.1.0, `nestjs-zod` 5.5.0, `helmet` 8.3.0
+  - `supertest` 7.2.1, `@types/supertest` 7.2.1
+  - `unplugin-swc` 1.5.1, `@swc/core` 1.16.18 (para testes de integração Vitest + decorators)
+  - `tsx` 4.23.15 (scripts de banco)
+- **F1 — Ajuste de fase:** entity `system_settings` + repository + migration `create_system_settings` movida da F3 para F1 (dá caso real ao pipeline: coreColumns, geração de migration, migrate, reset, integração).
 
 ### Alterado
 
