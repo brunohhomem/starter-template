@@ -1,4 +1,4 @@
-import { z } from '@starter/shared/zod';
+import { z } from '../zod';
 
 export const emailSchema = z.string().trim().toLowerCase().email().max(254);
 

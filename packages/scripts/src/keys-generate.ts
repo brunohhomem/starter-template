@@ -35,6 +35,7 @@ const GENERATED_KEYS: readonly KeySpec[] = [
 ] as const;
 
 const USER_DEFINED_KEYS = [
+  'ADMIN_EMAIL',
   'SEED_ADMIN_EMAIL',
   'SEED_ADMIN_PASSWORD',
   'ADMIN_INITIAL_PASSWORD',
