@@ -1,11 +1,8 @@
-import { Module, Provider, Global } from '@nestjs/common';
-import { Pool } from 'pg';
+import { Module, Global } from '@nestjs/common';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../src/database/schema';
+import { DATABASE } from '../src/database/database.module';
 import { getTestPool } from './integration-setup';
-
-/** Token com a instância Drizzle consumida pelos repositories. */
-export const DATABASE = Symbol('DATABASE');
 
 export type Database = NodePgDatabase<typeof schema>;
 

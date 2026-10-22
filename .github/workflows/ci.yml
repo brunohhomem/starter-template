@@ -79,17 +79,6 @@ jobs:
           --health-interval=5s
           --health-timeout=3s
           --health-retries=10
-      redis:
-        image: redis:7.4
-        env:
-          REDIS_PASSWORD: redis
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd="redis-cli -a redis ping"
-          --health-interval=5s
-          --health-timeout=3s
-          --health-retries=10
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -115,6 +104,11 @@ jobs:
           key: turbo-${{ github.sha }}
           restore-keys: |
             turbo-
+
+      - name: Iniciar Redis com senha
+        run: |
+          docker run -d --name ci-redis -p 6379:6379 redis:7.4 redis-server --requirepass redis
+          timeout 30 sh -c 'until docker exec ci-redis redis-cli -a redis ping 2>/dev/null | grep -q PONG; do sleep 1; done'
 
       - name: Gerar .env para testes (exercita keys:generate no CI)
         env:
