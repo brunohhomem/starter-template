@@ -12,3 +12,9 @@ export type { User, NewUser } from '../modules/auth/user.entity';
 
 export { sessions } from '../modules/auth/session.entity';
 export type { Session, NewSession } from '../modules/auth/session.entity';
+
+export { emailTokens, emailTokenTypeEnum } from '../modules/email-tokens/email-token.entity';
+export type { EmailToken, NewEmailToken } from '../modules/email-tokens/email-token.entity';
+
+export { auditLogs } from '../modules/audit/audit-log.entity';
+export type { AuditLog, NewAuditLog } from '../modules/audit/audit-log.entity';
