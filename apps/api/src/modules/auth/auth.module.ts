@@ -10,9 +10,11 @@ import { PasswordHasher } from './password-hasher';
 import { TokenService } from './token.service';
 import { CookieService } from './cookie.service';
 import { SettingsModule } from '../settings/settings.module';
+import { EmailTokensModule } from '../email-tokens/email-tokens.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [SettingsModule, JwtModule.register({})],
+  imports: [SettingsModule, EmailTokensModule, AuditModule, JwtModule.register({})],
   controllers: [AuthController],
   providers: [
     AuthService,

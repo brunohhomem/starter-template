@@ -5,6 +5,7 @@ import { MailService } from './mail.service';
 import { UnrecoverableMailError } from './mail.errors';
 import type { MailMessage } from './mail.types';
 import type { Env } from '../../config/env.schema';
+import { Resend } from 'resend';
 
 const createEnv = (overrides: Partial<Env> = {}): Env => ({
   NODE_ENV: 'development',
@@ -168,7 +169,7 @@ describe('ResendTransport', () => {
 
     const env = baseEnv();
     const transport = new ResendTransport(env);
-    (transport as unknown as { _client: typeof mockResend })._client = mockResend;
+    transport.setClientForTesting(mockResend as unknown as Resend);
 
     const message: MailMessage = {
       from: 'test@example.com',
@@ -196,7 +197,7 @@ describe('ResendTransport', () => {
 
     const env = baseEnv();
     const transport = new ResendTransport(env);
-    (transport as unknown as { _client: typeof mockResend })._client = mockResend;
+    transport.setClientForTesting(mockResend as unknown as Resend);
 
     const message: MailMessage = {
       from: 'test@example.com',
@@ -217,7 +218,7 @@ describe('ResendTransport', () => {
 
     const env = baseEnv();
     const transport = new ResendTransport(env);
-    (transport as unknown as { _client: typeof mockResend })._client = mockResend;
+    transport.setClientForTesting(mockResend as unknown as Resend);
 
     const message: MailMessage = {
       from: 'test@example.com',

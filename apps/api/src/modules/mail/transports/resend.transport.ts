@@ -20,6 +20,11 @@ export class ResendTransport implements MailTransport {
     return this._client;
   }
 
+  /** Only for testing: allows injecting a mock Resend client */
+  setClientForTesting(client: Resend): void {
+    this._client = client;
+  }
+
   async send(message: MailMessage): Promise<void> {
     const to = Array.isArray(message.to) ? message.to : [message.to];
     const payload: CreateEmailOptions = {

@@ -1,21 +1,36 @@
 import {
+  ConflictException,
+  ForbiddenException,
+  Inject,
   Injectable,
   UnauthorizedException,
-  ForbiddenException,
-  ConflictException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
-import { UsersRepository } from './users.repository';
-import { SessionsRepository } from './sessions.repository';
-import { PasswordHasher } from './password-hasher';
-import { TokenService } from './token.service';
-import { CookieService } from './cookie.service';
-import { SystemSettingsRepository } from '../settings/system-settings.repository';
-import type { Database, DatabaseTransaction } from '../../database/database.module';
-import { DATABASE } from '../../database/database.module';
-import { Inject } from '@nestjs/common';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { AUDIT_ACTIONS, FORGOT_PASSWORD_RESPONSE_MESSAGE } from '@starter/shared';
 import type { Response } from 'express';
+import { DATABASE } from '../../database/database.module';
+import type { Database, DatabaseTransaction } from '../../database/database.module';
+import { AuditService } from '../audit/audit.service';
+import { EmailTokensService } from '../email-tokens/email-tokens.service';
+import type { MailJob } from '../mail/mail-queue.service';
+import { MailQueueService } from '../mail/mail-queue.service';
+import { SystemSettingsRepository } from '../settings/system-settings.repository';
+import { CookieService } from './cookie.service';
+import { PasswordHasher } from './password-hasher';
+import { SessionsRepository } from './sessions.repository';
+import { TokenService } from './token.service';
+import { UsersRepository } from './users.repository';
+
+type AuthUserResponse = {
+  user: {
+    id: string;
+    email: string;
+    role: string;
+    mustChangePassword: boolean;
+    emailVerified: boolean;
+  };
+};
 
 @Injectable()
 export class AuthService {
@@ -26,6 +41,9 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly cookieService: CookieService,
     private readonly systemSettingsRepository: SystemSettingsRepository,
+    private readonly emailTokensService: EmailTokensService,
+    private readonly mailQueueService: MailQueueService,
+    private readonly auditService: AuditService,
     @Inject(DATABASE) private readonly db: Database,
   ) {}
 
@@ -33,19 +51,7 @@ export class AuthService {
     return this.db.transaction(fn);
   }
 
-  async register(
-    email: string,
-    password: string,
-    res: Response,
-  ): Promise<{
-    user: {
-      id: string;
-      email: string;
-      role: string;
-      mustChangePassword: boolean;
-      emailVerified: boolean;
-    };
-  }> {
+  async register(email: string, password: string, res: Response): Promise<AuthUserResponse> {
     // Normalize email to lowercase
     const normalizedEmail = email.toLowerCase();
 
@@ -123,6 +129,17 @@ export class AuthService {
 
     this.cookieService.setAuthCookies(res, result.accessToken, result.refreshToken);
 
+    // Fire-and-forget: enqueue confirmation email (decision 3.11 + 3.7)
+    void this.emailTokensService
+      .issue(result.user.id, 'email_confirmation')
+      .then(({ token, expiresAt }) =>
+        this.mailQueueService.enqueue({
+          type: 'send-email-confirmation',
+          payload: { to: result.user.email, token, expiresAt: expiresAt.toISOString() },
+        }),
+      )
+      .catch(() => undefined);
+
     return {
       user: {
         id: result.user.id,
@@ -134,19 +151,7 @@ export class AuthService {
     };
   }
 
-  async login(
-    email: string,
-    password: string,
-    res: Response,
-  ): Promise<{
-    user: {
-      id: string;
-      email: string;
-      role: string;
-      mustChangePassword: boolean;
-      emailVerified: boolean;
-    };
-  }> {
+  async login(email: string, password: string, res: Response): Promise<AuthUserResponse> {
     const user = await this.usersRepository.findByEmail(email);
 
     if (!user || !user.isActive) {
@@ -211,18 +216,7 @@ export class AuthService {
     };
   }
 
-  async refresh(
-    refreshToken: string,
-    res: Response,
-  ): Promise<{
-    user: {
-      id: string;
-      email: string;
-      role: string;
-      mustChangePassword: boolean;
-      emailVerified: boolean;
-    };
-  }> {
+  async refresh(refreshToken: string, res: Response): Promise<AuthUserResponse> {
     if (!refreshToken) {
       throw new UnauthorizedException({
         statusCode: 401,
@@ -372,15 +366,7 @@ export class AuthService {
     this.cookieService.clearAuthCookies(res);
   }
 
-  async me(userId: string): Promise<{
-    user: {
-      id: string;
-      email: string;
-      role: string;
-      mustChangePassword: boolean;
-      emailVerified: boolean;
-    };
-  }> {
+  async me(userId: string): Promise<AuthUserResponse> {
     const user = await this.usersRepository.findById(userId);
     if (!user) {
       throw new UnauthorizedException({
@@ -410,15 +396,7 @@ export class AuthService {
     currentPassword: string,
     newPassword: string,
     res: Response,
-  ): Promise<{
-    user: {
-      id: string;
-      email: string;
-      role: string;
-      mustChangePassword: boolean;
-      emailVerified: boolean;
-    };
-  }> {
+  ): Promise<AuthUserResponse> {
     const user = await this.usersRepository.findById(userId);
     if (!user) {
       throw new UnauthorizedException({
@@ -493,6 +471,233 @@ export class AuthService {
         role: user.role,
         mustChangePassword: false,
         emailVerified: !!user.emailVerifiedAt,
+      },
+    };
+  }
+
+  async confirmEmail(token: string, ip?: string): Promise<void> {
+    const userId = await this.emailTokensService.consume(token, 'email_confirmation');
+    await this.usersRepository.verifyEmail(userId);
+    void this.auditService
+      .record({ actorUserId: userId, action: AUDIT_ACTIONS.AUTH_EMAIL_CONFIRMED, ip: ip ?? null })
+      .catch(() => undefined);
+  }
+
+  async resendEmailConfirmation(userId: string): Promise<void> {
+    const user = await this.usersRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException({
+        statusCode: 401,
+        error: 'Unauthorized',
+        message: 'Não autorizado',
+        code: 'AUTH_UNAUTHORIZED',
+        requestId: '',
+        path: '/api/auth/email/resend',
+        timestamp: new Date().toISOString(),
+      });
+    }
+    if (user.emailVerifiedAt) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'Conflict',
+        message: 'E-mail já confirmado',
+        code: 'AUTH_EMAIL_ALREADY_CONFIRMED',
+        requestId: '',
+        path: '/api/auth/email/resend',
+        timestamp: new Date().toISOString(),
+      });
+    }
+    await this.emailTokensService.invalidate(userId, 'email_confirmation');
+    const { token, expiresAt } = await this.emailTokensService.issue(userId, 'email_confirmation');
+    void this.mailQueueService
+      .enqueue({
+        type: 'send-email-confirmation',
+        payload: { to: user.email, token, expiresAt: expiresAt.toISOString() },
+      })
+      .catch(() => undefined);
+  }
+
+  async forgotPassword(email: string, ip?: string): Promise<{ message: string }> {
+    const normalizedEmail = email.toLowerCase();
+    const user = await this.usersRepository.findByEmail(normalizedEmail);
+
+    if (user && user.isActive) {
+      await this.emailTokensService.invalidate(user.id, 'password_reset');
+      const { token, expiresAt } = await this.emailTokensService.issue(user.id, 'password_reset');
+      void this.mailQueueService
+        .enqueue({
+          type: 'send-password-reset',
+          payload: { to: user.email, token, expiresAt: expiresAt.toISOString() },
+        })
+        .catch(() => undefined);
+      void this.auditService
+        .record({
+          actorUserId: user.id,
+          action: AUDIT_ACTIONS.AUTH_PASSWORD_RESET_REQUESTED,
+          ip: ip ?? null,
+        })
+        .catch(() => undefined);
+    }
+
+    return { message: FORGOT_PASSWORD_RESPONSE_MESSAGE };
+  }
+
+  async resetPassword(token: string, newPassword: string, ip?: string): Promise<void> {
+    const newHash = await this.passwordHasher.hash(newPassword);
+
+    await this.withTransaction(async (tx) => {
+      const userId = await this.emailTokensService.consume(token, 'password_reset');
+      await this.usersRepository.updatePasswordHash(userId, newHash, false, tx);
+      await this.sessionsRepository.revokeAllByUser(userId, tx);
+      await this.emailTokensService.invalidate(userId, 'password_reset', tx);
+      void this.auditService
+        .record({
+          actorUserId: userId,
+          action: AUDIT_ACTIONS.AUTH_PASSWORD_RESET_COMPLETED,
+          ip: ip ?? null,
+        })
+        .catch(() => undefined);
+    });
+  }
+
+  async inviteUser(
+    adminUserId: string,
+    email: string,
+    role: 'admin' | 'user',
+    ip?: string,
+  ): Promise<{ id: string; email: string; role: string; expiresAt: string }> {
+    const normalizedEmail = email.toLowerCase();
+    const existingUser = await this.usersRepository.findByEmail(normalizedEmail);
+
+    if (existingUser) {
+      const isPending = !existingUser.lastLoginAt && !existingUser.emailVerifiedAt;
+      if (!isPending) {
+        throw new ConflictException({
+          statusCode: 409,
+          error: 'Conflict',
+          message: 'Este e-mail já possui uma conta',
+          code: 'AUTH_INVITE_EMAIL_TAKEN',
+          requestId: '',
+          path: '/api/auth/invitations',
+          timestamp: new Date().toISOString(),
+        });
+      }
+      // Re-invite: invalidate old token, issue new
+      await this.emailTokensService.invalidate(existingUser.id, 'invite');
+      const { token, expiresAt } = await this.emailTokensService.issue(existingUser.id, 'invite');
+      void this.mailQueueService
+        .enqueue({
+          type: 'send-invite',
+          payload: { to: existingUser.email, token, expiresAt: expiresAt.toISOString() },
+        })
+        .catch(() => undefined);
+      void this.auditService
+        .record({
+          actorUserId: adminUserId,
+          action: AUDIT_ACTIONS.AUTH_INVITATION_SENT,
+          targetType: 'user',
+          targetId: existingUser.id,
+          metadata: { email: existingUser.email, role: existingUser.role },
+          ip: ip ?? null,
+        })
+        .catch(() => undefined);
+      return {
+        id: existingUser.id,
+        email: existingUser.email,
+        role: existingUser.role,
+        expiresAt: expiresAt.toISOString(),
+      };
+    }
+
+    // Create new invited user with unreachable password
+    const unreachablePassword = randomBytes(32).toString('base64url');
+    const passwordHash = await this.passwordHasher.hash(unreachablePassword);
+
+    const newUser = await this.usersRepository.create({
+      email: normalizedEmail,
+      passwordHash,
+      role,
+      isActive: true,
+      mustChangePassword: false,
+    });
+
+    const { token, expiresAt } = await this.emailTokensService.issue(newUser.id, 'invite');
+    void this.mailQueueService
+      .enqueue({
+        type: 'send-invite',
+        payload: { to: newUser.email, token, expiresAt: expiresAt.toISOString() },
+      })
+      .catch(() => undefined);
+    void this.auditService
+      .record({
+        actorUserId: adminUserId,
+        action: AUDIT_ACTIONS.AUTH_INVITATION_SENT,
+        targetType: 'user',
+        targetId: newUser.id,
+        metadata: { email: newUser.email, role: newUser.role },
+        ip: ip ?? null,
+      })
+      .catch(() => undefined);
+
+    return {
+      id: newUser.id,
+      email: newUser.email,
+      role: newUser.role,
+      expiresAt: expiresAt.toISOString(),
+    };
+  }
+
+  async acceptInvitation(
+    token: string,
+    password: string,
+    res: Response,
+    ip?: string,
+  ): Promise<AuthUserResponse> {
+    const newHash = await this.passwordHasher.hash(password);
+
+    const result = await this.withTransaction(async (tx) => {
+      const userId = await this.emailTokensService.consume(token, 'invite');
+      const user = await this.usersRepository.activateFromInvite(userId, newHash, tx);
+
+      const sessionId = randomUUID();
+      const familyId = randomUUID();
+      const { token: refreshToken, hash: refreshTokenHash } =
+        this.tokenService.generateRefreshToken();
+      const expiresAt = new Date(
+        Date.now() + this.tokenService.refreshTtlDays * 24 * 60 * 60 * 1000,
+      );
+
+      await this.sessionsRepository.create(
+        { id: sessionId, userId: user.id, familyId, refreshTokenHash, expiresAt },
+        tx,
+      );
+
+      const accessToken = this.tokenService.signAccess(
+        { id: user.id, role: user.role },
+        sessionId,
+        user.mustChangePassword,
+      );
+
+      return { user, sessionId, accessToken, refreshToken };
+    });
+
+    void this.auditService
+      .record({
+        actorUserId: result.user.id,
+        action: AUDIT_ACTIONS.AUTH_INVITATION_ACCEPTED,
+        ip: ip ?? null,
+      })
+      .catch(() => undefined);
+
+    this.cookieService.setAuthCookies(res, result.accessToken, result.refreshToken);
+
+    return {
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        mustChangePassword: result.user.mustChangePassword,
+        emailVerified: !!result.user.emailVerifiedAt,
       },
     };
   }

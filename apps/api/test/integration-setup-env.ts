@@ -8,6 +8,7 @@ import { getEnv, resetEnvCache } from '../src/config/load-env';
 
 // Define NODE_ENV=test ANTES de carregar o env para que o cache seja correto
 process.env.NODE_ENV = 'test';
+process.env.MAIL_DRIVER = 'memory';
 
 // Reseta o cache para forçar recarregamento com NODE_ENV=test
 resetEnvCache();

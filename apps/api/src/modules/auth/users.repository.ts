@@ -50,4 +50,32 @@ export class UsersRepository {
       .set({ lastLoginAt: new Date(), updatedAt: new Date() })
       .where(eq(users.id, id));
   }
+
+  async verifyEmail(id: string, tx?: DatabaseTransaction): Promise<void> {
+    const client = tx ?? this.db;
+    await client
+      .update(users)
+      .set({ emailVerifiedAt: new Date(), updatedAt: new Date() })
+      .where(eq(users.id, id));
+  }
+
+  async activateFromInvite(
+    id: string,
+    passwordHash: string,
+    tx?: DatabaseTransaction,
+  ): Promise<User> {
+    const client = tx ?? this.db;
+    const result = await client
+      .update(users)
+      .set({
+        passwordHash,
+        emailVerifiedAt: new Date(),
+        mustChangePassword: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    if (!result[0]) throw new Error('Failed to activate invited user');
+    return result[0];
+  }
 }
