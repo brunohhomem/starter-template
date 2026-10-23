@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
-import { createTestApp, closeTestApp, resetDatabase } from './integration-utils';
+import { createTestApp, closeTestApp, resetDatabase, resetThrottle } from './integration-utils';
 import { setupTestDatabase } from './integration-setup';
 
 describe('Health integration', () => {
@@ -18,6 +18,7 @@ describe('Health integration', () => {
 
   beforeEach(async () => {
     await resetDatabase();
+    await resetThrottle();
   });
 
   it('GET /api/health retorna 200 com status ok quando banco e Redis saudáveis', async () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
-import { createTestApp, closeTestApp, resetDatabase } from './integration-utils';
+import { createTestApp, closeTestApp, resetDatabase, resetThrottle } from './integration-utils';
 import {
   setupTestDatabase,
   teardownTestDatabase,
@@ -12,29 +12,6 @@ import { startTestWorker } from './test-worker';
 import { MemoryTransport } from '../src/modules/mail/transports/memory.transport';
 import { renderEmail } from '../src/modules/mail/templates/render-email';
 import { seedAdmin } from '../src/database/seed/admin.seed';
-import Redis from 'ioredis';
-import { getEnv } from '../src/config/load-env';
-
-async function resetThrottle(): Promise<void> {
-  const env = getEnv();
-  const redis = new Redis({
-    host: env.REDIS_HOST,
-    port: env.REDIS_PORT,
-    password: env.REDIS_PASSWORD,
-    maxRetriesPerRequest: 1,
-    retryStrategy: () => null,
-    lazyConnect: true,
-  });
-  try {
-    await redis.connect();
-    const keys = await redis.keys('throttle:*');
-    if (keys.length > 0) await redis.del(...keys);
-  } catch {
-    // fail-open
-  } finally {
-    await redis.quit();
-  }
-}
 
 async function waitForEmail(
   memoryTransport: MemoryTransport,
@@ -163,6 +140,7 @@ describe('F3 — e-mail, confirmação, senha, convite, configurações, seguran
       await request(app.getHttpServer())
         .post('/api/auth/register')
         .send({ email: 'existente@teste.com', password: 'SenhaForte123' });
+      await waitForEmail(memoryTransport, 'existente@teste.com');
       memoryTransport.clear();
 
       const resExistente = await request(app.getHttpServer())
@@ -189,6 +167,7 @@ describe('F3 — e-mail, confirmação, senha, convite, configurações, seguran
       await request(app.getHttpServer())
         .post('/api/auth/register')
         .send({ email: 'resetsenha@teste.com', password: 'SenhaAntiga123' });
+      await waitForEmail(memoryTransport, 'resetsenha@teste.com');
 
       // Create a second session (login from another device)
       await request(app.getHttpServer())
@@ -208,6 +187,13 @@ describe('F3 — e-mail, confirmação, senha, convite, configurações, seguran
         .send({ token, newPassword: 'NovaSenha456' })
         .expect(204);
 
+      // All sessions revoked immediately after reset (before new login creates a new one)
+      const pool = getTestPool();
+      const sessions = await pool.query(
+        `SELECT revoked_at FROM sessions WHERE user_id = (SELECT id FROM users WHERE email = 'resetsenha@teste.com')`,
+      );
+      expect(sessions.rows.every((row) => row.revoked_at !== null)).toBe(true);
+
       // Old password fails
       await request(app.getHttpServer())
         .post('/api/auth/login')
@@ -219,20 +205,13 @@ describe('F3 — e-mail, confirmação, senha, convite, configurações, seguran
         .post('/api/auth/login')
         .send({ email: 'resetsenha@teste.com', password: 'NovaSenha456' })
         .expect(200);
-
-      // All previous sessions revoked
-      const pool = getTestPool();
-      const sessions = await pool.query(
-        `SELECT revoked_at FROM sessions WHERE user_id = (SELECT id FROM users WHERE email = 'resetsenha@teste.com')`,
-      );
-      expect(sessions.rows.every((row) => row.revoked_at !== null)).toBe(true);
     });
 
     it('usuário usa um link de reset já usado — 400', async () => {
       await request(app.getHttpServer())
         .post('/api/auth/register')
         .send({ email: 'resutoken@teste.com', password: 'SenhaForte123' });
-
+      await waitForEmail(memoryTransport, 'resutoken@teste.com');
       memoryTransport.clear();
       await request(app.getHttpServer())
         .post('/api/auth/password/forgot')

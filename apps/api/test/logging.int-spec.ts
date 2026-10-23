@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
-import { createTestApp, closeTestApp, resetDatabase } from './integration-utils';
+import { createTestApp, closeTestApp, resetDatabase, resetThrottle } from './integration-utils';
 import { setupTestDatabase } from './integration-setup';
 
 describe('Logging integration (T9 acceptance)', () => {
@@ -18,6 +18,7 @@ describe('Logging integration (T9 acceptance)', () => {
 
   beforeEach(async () => {
     await resetDatabase();
+    await resetThrottle();
   });
 
   it('request ID válido é aceito e ecoado no header x-request-id', async () => {
