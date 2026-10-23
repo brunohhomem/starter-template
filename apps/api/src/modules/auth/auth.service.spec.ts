@@ -12,6 +12,9 @@ import { PasswordHasher } from './password-hasher';
 import { TokenService } from './token.service';
 import { CookieService } from './cookie.service';
 import { SystemSettingsRepository } from '../settings/system-settings.repository';
+import { EmailTokensService } from '../email-tokens/email-tokens.service';
+import { MailQueueService } from '../mail/mail-queue.service';
+import { AuditService } from '../audit/audit.service';
 import { AuthService } from './auth.service';
 import { DATABASE } from '../../database/database.module';
 import type { Response } from 'express';
@@ -24,6 +27,9 @@ describe('AuthService', () => {
   let tokenService: MockTokenService;
   let cookieService: MockCookieService;
   let systemSettingsRepository: MockSystemSettingsRepository;
+  let emailTokensService: MockEmailTokensService;
+  let mailQueueService: MockMailQueueService;
+  let auditService: MockAuditService;
   let mockDb: MockDatabase;
   let mockResponse: Response;
 
@@ -71,6 +77,20 @@ describe('AuthService', () => {
 
   interface MockSystemSettingsRepository {
     findByKey: jest.Mock;
+  }
+
+  interface MockEmailTokensService {
+    issue: jest.Mock;
+    consume: jest.Mock;
+    invalidateByUser: jest.Mock;
+  }
+
+  interface MockMailQueueService {
+    enqueue: jest.Mock;
+  }
+
+  interface MockAuditService {
+    record: jest.Mock;
   }
 
   interface MockDatabase {
@@ -155,6 +175,20 @@ describe('AuthService', () => {
       findByKey: jest.fn(),
     } as MockSystemSettingsRepository;
 
+    emailTokensService = {
+      issue: jest.fn(),
+      consume: jest.fn(),
+      invalidateByUser: jest.fn(),
+    } as MockEmailTokensService;
+
+    mailQueueService = {
+      enqueue: jest.fn().mockResolvedValue(undefined),
+    } as MockMailQueueService;
+
+    auditService = {
+      record: jest.fn().mockResolvedValue(undefined),
+    } as MockAuditService;
+
     mockDb = {
       transaction: jest.fn((fn) => fn({} as Record<string, unknown>)),
     };
@@ -173,6 +207,9 @@ describe('AuthService', () => {
         { provide: TokenService, useValue: tokenService },
         { provide: CookieService, useValue: cookieService },
         { provide: SystemSettingsRepository, useValue: systemSettingsRepository },
+        { provide: EmailTokensService, useValue: emailTokensService },
+        { provide: MailQueueService, useValue: mailQueueService },
+        { provide: AuditService, useValue: auditService },
         { provide: DATABASE, useValue: mockDb },
       ],
     }).compile();
@@ -198,6 +235,10 @@ describe('AuthService', () => {
         hash: 'hash123',
       });
       tokenService.signAccess.mockReturnValue('access-token');
+      emailTokensService.issue.mockResolvedValue({
+        token: 'tok123',
+        expiresAt: new Date(Date.now() + 86400000),
+      });
       mockDb.transaction.mockImplementation(async (fn) => fn({} as Record<string, unknown>));
 
       const result = await authService.register('test@example.com', 'Password@123', mockResponse);
@@ -262,6 +303,10 @@ describe('AuthService', () => {
         hash: 'hash123',
       });
       tokenService.signAccess.mockReturnValue('access-token');
+      emailTokensService.issue.mockResolvedValue({
+        token: 'tok123',
+        expiresAt: new Date(Date.now() + 86400000),
+      });
       mockDb.transaction.mockImplementation(async (fn) => fn({} as Record<string, unknown>));
 
       await authService.register('TEST@EXAMPLE.COM', 'Password@123', mockResponse);
