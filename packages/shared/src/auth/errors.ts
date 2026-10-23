@@ -12,6 +12,9 @@ export const AUTH_ERROR_CODES = {
   AUTH_PASSWORD_UNCHANGED: 'AUTH_PASSWORD_UNCHANGED',
   AUTH_CURRENT_PASSWORD_WRONG: 'AUTH_CURRENT_PASSWORD_WRONG',
   RATE_LIMITED: 'RATE_LIMITED',
+  AUTH_EMAIL_TOKEN_INVALID: 'AUTH_EMAIL_TOKEN_INVALID',
+  AUTH_INVITE_EMAIL_TAKEN: 'AUTH_INVITE_EMAIL_TAKEN',
+  AUTH_EMAIL_ALREADY_CONFIRMED: 'AUTH_EMAIL_ALREADY_CONFIRMED',
 } as const;
 
 export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CODES];
@@ -30,6 +33,9 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   [AUTH_ERROR_CODES.AUTH_PASSWORD_UNCHANGED]: 'A nova senha deve ser diferente da atual',
   [AUTH_ERROR_CODES.AUTH_CURRENT_PASSWORD_WRONG]: 'Senha atual incorreta',
   [AUTH_ERROR_CODES.RATE_LIMITED]: 'Muitas requisições, tente novamente mais tarde',
+  [AUTH_ERROR_CODES.AUTH_EMAIL_TOKEN_INVALID]: 'Token inválido, expirado ou já utilizado',
+  [AUTH_ERROR_CODES.AUTH_INVITE_EMAIL_TAKEN]: 'Este e-mail já possui uma conta',
+  [AUTH_ERROR_CODES.AUTH_EMAIL_ALREADY_CONFIRMED]: 'E-mail já confirmado',
 };
 
 export function authErrorMessage(code: AuthErrorCode): string {
