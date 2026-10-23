@@ -67,7 +67,7 @@ export async function seedAdmin(db: NodePgDatabase): Promise<AdminSeedResult> {
         passwordHash,
         role: 'admin',
         isActive: true,
-        mustChangePassword: true,
+        mustChangePassword: !isDevelopment,
         emailVerifiedAt: new Date(),
       });
 

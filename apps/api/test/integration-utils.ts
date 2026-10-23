@@ -1,8 +1,9 @@
 import { INestApplication } from '@nestjs/common';
+import Redis from 'ioredis';
 import { TestAppModule } from './test-app.module';
 import { configureApp } from '../src/bootstrap';
 import { getTestDb, getTestPool } from './integration-setup';
-import { loadEnv } from '../src/config/load-env';
+import { getEnv, loadEnv } from '../src/config/load-env';
 
 /**
  * Lista as tabelas dos schemas da aplicação em `information_schema`
@@ -35,6 +36,30 @@ export async function resetDatabase(): Promise<void> {
     INSERT INTO system_settings (key, value) VALUES ('registration_enabled', 'true'::jsonb)
     ON CONFLICT (key) DO UPDATE SET value = 'true'::jsonb
   `);
+}
+
+/**
+ * Limpa todas as chaves de throttle do Redis para isolar testes.
+ */
+export async function resetThrottle(): Promise<void> {
+  const env = getEnv();
+  const redis = new Redis({
+    host: env.REDIS_HOST,
+    port: env.REDIS_PORT,
+    password: env.REDIS_PASSWORD,
+    maxRetriesPerRequest: 1,
+    retryStrategy: () => null,
+    lazyConnect: true,
+  });
+  try {
+    await redis.connect();
+    const keys = await redis.keys('throttle:*');
+    if (keys.length > 0) await redis.del(...keys);
+  } catch {
+    // fail-open
+  } finally {
+    await redis.quit();
+  }
 }
 
 /**

@@ -1,15 +1,23 @@
-import { Controller, Post, Get, Body, Res, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, Res, Req, HttpCode, HttpStatus, Ip } from '@nestjs/common';
 import type { Response, Request } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiCookieAuth, ApiBody } from '@nestjs/swagger';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import {
   registerRequestSchema,
   loginRequestSchema,
   changePasswordRequestSchema,
 } from '@starter/shared/auth';
+import {
+  confirmEmailRequestSchema,
+  forgotPasswordRequestSchema,
+  resetPasswordRequestSchema,
+  createInvitationRequestSchema,
+  acceptInvitationRequestSchema,
+} from '@starter/shared';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 
 const ERROR_SCHEMA = {
@@ -41,6 +49,11 @@ const AUTH_RESPONSE_SCHEMA = {
   },
 };
 
+function getRefreshCookie(req: Request): string {
+  const cookieJar = req.cookies as Record<string, string> | undefined;
+  return cookieJar?.['refresh_token'] ?? '';
+}
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
@@ -48,7 +61,16 @@ export class AuthController {
 
   @Post('register')
   @Public()
-  @SkipThrottle({ default: true, login: true, refresh: true, ['change-password']: true })
+  @SkipThrottle({
+    default: true,
+    login: true,
+    refresh: true,
+    ['change-password']: true,
+    forgot: true,
+    ['token-submit']: true,
+    resend: true,
+    invite: true,
+  })
   @Throttle({ register: {} })
   @ApiOperation({ summary: 'Registrar novo usuário' })
   @ApiBody({
@@ -93,7 +115,16 @@ export class AuthController {
 
   @Post('login')
   @Public()
-  @SkipThrottle({ default: true, register: true, refresh: true, ['change-password']: true })
+  @SkipThrottle({
+    default: true,
+    register: true,
+    refresh: true,
+    ['change-password']: true,
+    forgot: true,
+    ['token-submit']: true,
+    resend: true,
+    invite: true,
+  })
   @Throttle({ login: {} })
   @ApiOperation({ summary: 'Login de usuário' })
   @ApiBody({
@@ -133,7 +164,16 @@ export class AuthController {
 
   @Post('refresh')
   @Public()
-  @SkipThrottle({ default: true, login: true, register: true, ['change-password']: true })
+  @SkipThrottle({
+    default: true,
+    login: true,
+    register: true,
+    ['change-password']: true,
+    forgot: true,
+    ['token-submit']: true,
+    resend: true,
+    invite: true,
+  })
   @Throttle({ refresh: {} })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Renovar access token usando refresh token' })
@@ -150,13 +190,21 @@ export class AuthController {
     schema: ERROR_SCHEMA,
   })
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const refreshToken = req.cookies?.refresh_token;
-    return this.authService.refresh(refreshToken, res);
+    return this.authService.refresh(getRefreshCookie(req), res);
   }
 
   @Post('logout')
   @Public()
-  @SkipThrottle({ login: true, register: true, refresh: true, ['change-password']: true })
+  @SkipThrottle({
+    login: true,
+    register: true,
+    refresh: true,
+    ['change-password']: true,
+    forgot: true,
+    ['token-submit']: true,
+    resend: true,
+    invite: true,
+  })
   @ApiOperation({ summary: 'Logout (revoga sessão atual)' })
   @ApiCookieAuth('refresh_token')
   @ApiResponse({
@@ -165,12 +213,20 @@ export class AuthController {
   })
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const refreshToken = req.cookies?.refresh_token;
-    await this.authService.logout(refreshToken, res);
+    await this.authService.logout(getRefreshCookie(req), res);
   }
 
   @Get('me')
-  @SkipThrottle({ login: true, register: true, refresh: true, ['change-password']: true })
+  @SkipThrottle({
+    login: true,
+    register: true,
+    refresh: true,
+    ['change-password']: true,
+    forgot: true,
+    ['token-submit']: true,
+    resend: true,
+    invite: true,
+  })
   @ApiOperation({ summary: 'Obter usuário autenticado' })
   @ApiCookieAuth('access_token')
   @ApiResponse({
@@ -201,7 +257,16 @@ export class AuthController {
   }
 
   @Post('change-password')
-  @SkipThrottle({ default: true, login: true, register: true, refresh: true })
+  @SkipThrottle({
+    default: true,
+    login: true,
+    register: true,
+    refresh: true,
+    forgot: true,
+    ['token-submit']: true,
+    resend: true,
+    invite: true,
+  })
   @Throttle({ ['change-password']: {} })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Trocar senha (revoga outras sessões)' })
@@ -251,5 +316,204 @@ export class AuthController {
       body.newPassword,
       res,
     );
+  }
+
+  @Post('email/confirm')
+  @Public()
+  @SkipThrottle({
+    default: true,
+    login: true,
+    register: true,
+    refresh: true,
+    ['change-password']: true,
+    forgot: true,
+    resend: true,
+    invite: true,
+  })
+  @Throttle({ ['token-submit']: {} })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Confirmar e-mail' })
+  @ApiResponse({ status: 204, description: 'E-mail confirmado' })
+  @ApiResponse({
+    status: 400,
+    description: 'Token inválido (AUTH_EMAIL_TOKEN_INVALID)',
+    schema: ERROR_SCHEMA,
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Muitas tentativas (RATE_LIMITED)',
+    schema: ERROR_SCHEMA,
+  })
+  async confirmEmail(
+    @Body(new ZodValidationPipe(confirmEmailRequestSchema)) body: { token: string },
+    @Ip() ip: string,
+  ) {
+    await this.authService.confirmEmail(body.token, ip);
+  }
+
+  @Post('email/resend')
+  @SkipThrottle({
+    default: true,
+    login: true,
+    register: true,
+    refresh: true,
+    ['change-password']: true,
+    forgot: true,
+    ['token-submit']: true,
+    invite: true,
+  })
+  @Throttle({ resend: {} })
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Reenviar e-mail de confirmação' })
+  @ApiCookieAuth('access_token')
+  @ApiResponse({ status: 202, description: 'E-mail de confirmação reenviado' })
+  @ApiResponse({ status: 401, description: 'Não autenticado', schema: ERROR_SCHEMA })
+  @ApiResponse({
+    status: 409,
+    description: 'E-mail já confirmado (AUTH_EMAIL_ALREADY_CONFIRMED)',
+    schema: ERROR_SCHEMA,
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Muitas tentativas (RATE_LIMITED)',
+    schema: ERROR_SCHEMA,
+  })
+  async resendEmailConfirmation(@CurrentUser() user: { userId: string }) {
+    await this.authService.resendEmailConfirmation(user.userId);
+  }
+
+  @Post('password/forgot')
+  @Public()
+  @SkipThrottle({
+    default: true,
+    login: true,
+    register: true,
+    refresh: true,
+    ['change-password']: true,
+    ['token-submit']: true,
+    resend: true,
+    invite: true,
+  })
+  @Throttle({ forgot: {} })
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Solicitar recuperação de senha' })
+  @ApiResponse({ status: 202, description: 'Sempre 202 — anti-enumeração' })
+  @ApiResponse({
+    status: 429,
+    description: 'Muitas tentativas (RATE_LIMITED)',
+    schema: ERROR_SCHEMA,
+  })
+  async forgotPassword(
+    @Body(new ZodValidationPipe(forgotPasswordRequestSchema)) body: { email: string },
+    @Ip() ip: string,
+  ) {
+    return this.authService.forgotPassword(body.email, ip);
+  }
+
+  @Post('password/reset')
+  @Public()
+  @SkipThrottle({
+    default: true,
+    login: true,
+    register: true,
+    refresh: true,
+    ['change-password']: true,
+    forgot: true,
+    resend: true,
+    invite: true,
+  })
+  @Throttle({ ['token-submit']: {} })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Redefinir senha' })
+  @ApiResponse({ status: 204, description: 'Senha redefinida' })
+  @ApiResponse({ status: 400, description: 'Token inválido ou senha fraca', schema: ERROR_SCHEMA })
+  @ApiResponse({
+    status: 429,
+    description: 'Muitas tentativas (RATE_LIMITED)',
+    schema: ERROR_SCHEMA,
+  })
+  async resetPassword(
+    @Body(new ZodValidationPipe(resetPasswordRequestSchema))
+    body: { token: string; newPassword: string },
+    @Ip() ip: string,
+  ) {
+    await this.authService.resetPassword(body.token, body.newPassword, ip);
+  }
+
+  @Post('invitations')
+  @Roles('admin')
+  @SkipThrottle({
+    default: true,
+    login: true,
+    register: true,
+    refresh: true,
+    ['change-password']: true,
+    forgot: true,
+    ['token-submit']: true,
+    resend: true,
+  })
+  @Throttle({ invite: {} })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Convidar usuário (admin)' })
+  @ApiCookieAuth('access_token')
+  @ApiResponse({ status: 201, description: 'Convite enviado' })
+  @ApiResponse({ status: 401, description: 'Não autenticado', schema: ERROR_SCHEMA })
+  @ApiResponse({ status: 403, description: 'Sem permissão', schema: ERROR_SCHEMA })
+  @ApiResponse({
+    status: 409,
+    description: 'E-mail já possui conta ativa (AUTH_INVITE_EMAIL_TAKEN)',
+    schema: ERROR_SCHEMA,
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Muitas tentativas (RATE_LIMITED)',
+    schema: ERROR_SCHEMA,
+  })
+  async inviteUser(
+    @Body(new ZodValidationPipe(createInvitationRequestSchema))
+    body: { email: string; role: 'admin' | 'user' },
+    @CurrentUser() currentUser: { userId: string },
+    @Ip() ip: string,
+  ) {
+    return this.authService.inviteUser(currentUser.userId, body.email, body.role, ip);
+  }
+
+  @Post('invitations/accept')
+  @Public()
+  @SkipThrottle({
+    default: true,
+    login: true,
+    register: true,
+    refresh: true,
+    ['change-password']: true,
+    forgot: true,
+    resend: true,
+    invite: true,
+  })
+  @Throttle({ ['token-submit']: {} })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Aceitar convite' })
+  @ApiResponse({
+    status: 200,
+    description: 'Convite aceito. Cookies setados.',
+    schema: AUTH_RESPONSE_SCHEMA,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Token inválido (AUTH_EMAIL_TOKEN_INVALID)',
+    schema: ERROR_SCHEMA,
+  })
+  @ApiResponse({
+    status: 429,
+    description: 'Muitas tentativas (RATE_LIMITED)',
+    schema: ERROR_SCHEMA,
+  })
+  async acceptInvitation(
+    @Body(new ZodValidationPipe(acceptInvitationRequestSchema))
+    body: { token: string; password: string },
+    @Res({ passthrough: true }) res: Response,
+    @Ip() ip: string,
+  ) {
+    return this.authService.acceptInvitation(body.token, body.password, res, ip);
   }
 }

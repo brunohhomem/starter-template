@@ -59,6 +59,23 @@ export class AppThrottlerGuard extends ThrottlerGuard {
         const user = request.user;
         return `throttle:change-password:${user?.userId ?? this.getIp(request)}`;
       }
+      case 'forgot': {
+        const email = (request.body?.email as string | undefined)?.toLowerCase() ?? '';
+        const ip = this.getIp(request);
+        return `throttle:forgot:${ip}:${email}`;
+      }
+      case 'token-submit': {
+        const ip = this.getIp(request);
+        return `throttle:token-submit:${ip}`;
+      }
+      case 'resend': {
+        const user = request.user;
+        return `throttle:resend:${user?.userId ?? this.getIp(request)}`;
+      }
+      case 'invite': {
+        const user = request.user;
+        return `throttle:invite:${user?.userId ?? this.getIp(request)}`;
+      }
       default: {
         const ip = this.getIp(request);
         return `throttle:default:${ip}`;

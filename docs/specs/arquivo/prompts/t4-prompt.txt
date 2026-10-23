@@ -1,0 +1,208 @@
+Você é o executor de uma tarefa num monorepo pnpm. Leia tudo antes de escrever qualquer código.
+
+## Contexto do projeto
+
+Monorepo pnpm. API em `apps/api` com NestJS + Drizzle ORM + PostgreSQL.
+- `pnpm --filter @starter/api typecheck` — typecheck da API
+- `pnpm --filter @starter/api lint` — lint da API
+- `pnpm --filter @starter/api test` — testes unitários da API
+
+## Tarefa T4 — Repositories
+
+### Padrão do projeto
+
+**Padrão de Repository** (baseado em `apps/api/src/modules/auth/sessions.repository.ts`):
+```typescript
+import { eq, and, lt } from 'drizzle-orm';
+import { Inject, Injectable } from '@nestjs/common';
+import type { Database, DatabaseTransaction } from '../../database/database.module';
+import { DATABASE } from '../../database/database.module';
+import { minhaTabela, type MinhaEntity, type NovaMinhaEntity } from './minha.entity';
+
+@Injectable()
+export class MinhaRepository {
+  constructor(@Inject(DATABASE) private readonly db: Database) {}
+
+  async findById(id: string, tx?: DatabaseTransaction): Promise<MinhaEntity | null> {
+    const client = tx ?? this.db;
+    const result = await client.select().from(minhaTabela).where(eq(minhaTabela.id, id)).limit(1);
+    return result[0] ?? null;
+  }
+}
+```
+
+### O que implementar
+
+#### 1. Criar `apps/api/src/modules/email-tokens/email-tokens.repository.ts`
+
+Métodos obrigatórios:
+
+**`create(userId, type, tokenHash, expiresAt, tx?)`** → `EmailToken`
+```typescript
+async create(
+  userId: string,
+  type: 'email_confirmation' | 'password_reset' | 'invite',
+  tokenHash: string,
+  expiresAt: Date,
+  tx?: DatabaseTransaction,
+): Promise<EmailToken>
+```
+Insere com `.returning()`. Se não retornar resultado, lança `new Error('Failed to create email token')`.
+
+**`consume(tokenHash, type, tx?)`** → `EmailToken | null`
+```typescript
+async consume(
+  tokenHash: string,
+  type: 'email_confirmation' | 'password_reset' | 'invite',
+  tx?: DatabaseTransaction,
+): Promise<EmailToken | null>
+```
+Atomicidade obrigatória: um único `UPDATE ... WHERE used_at IS NULL AND expires_at > now() RETURNING`.
+Use Drizzle:
+```typescript
+const now = new Date();
+const result = await client
+  .update(emailTokens)
+  .set({ usedAt: now, updatedAt: now })
+  .where(
+    and(
+      eq(emailTokens.tokenHash, tokenHash),
+      eq(emailTokens.type, type),
+      isNull(emailTokens.usedAt),
+      gt(emailTokens.expiresAt, now),
+    ),
+  )
+  .returning();
+return result[0] ?? null;
+```
+Imports necessários: `eq, and, isNull, gt, lt` de `drizzle-orm`.
+
+**`invalidateByUserAndType(userId, type, tx?)`** → `void`
+```typescript
+async invalidateByUserAndType(
+  userId: string,
+  type: 'email_confirmation' | 'password_reset' | 'invite',
+  tx?: DatabaseTransaction,
+): Promise<void>
+```
+Marca `used_at = now()` para todos os tokens do usuário com o tipo dado que ainda não foram usados (`used_at IS NULL`).
+
+**`deleteExpiredBefore(date, tx?)`** → `number`
+```typescript
+async deleteExpiredBefore(date: Date, tx?: DatabaseTransaction): Promise<number>
+```
+Deleta tokens cujo `expires_at < date`. Retorna `result.rowCount ?? 0`.
+
+#### 2. Criar `apps/api/src/modules/audit/audit-logs.repository.ts`
+
+Métodos obrigatórios:
+
+**`create(entry, tx?)`** → `AuditLog`
+```typescript
+async create(
+  entry: {
+    actorUserId?: string | null;
+    action: string;
+    targetType?: string | null;
+    targetId?: string | null;
+    metadata?: Record<string, unknown>;
+    ip?: string | null;
+  },
+  tx?: DatabaseTransaction,
+): Promise<AuditLog>
+```
+Insere com `.returning()`. Se não retornar resultado, lança `new Error('Failed to create audit log')`.
+
+**`list(params, tx?)`** → `{ items: AuditLog[], total: number }`
+```typescript
+async list(
+  params: { page: number; pageSize: number; action?: string },
+  tx?: DatabaseTransaction,
+): Promise<{ items: AuditLog[]; total: number }>
+```
+- Filtro opcional por `action` (eq quando fornecido)
+- Ordenado por `createdAt` desc
+- Paginação: `limit(params.pageSize).offset((params.page - 1) * params.pageSize)`
+- Total: query separada com `count()` de `drizzle-orm`
+- Retorna `{ items, total }` (o service calcula `totalPages` usando `buildPageMeta` de `@starter/shared`)
+
+Imports: `eq, desc, count, and` de `drizzle-orm`; `sql` de `drizzle-orm` se necessário.
+
+#### 3. Criar `apps/api/src/modules/email-tokens/email-tokens.module.ts`
+
+```typescript
+import { Module } from '@nestjs/common';
+import { EmailTokensRepository } from './email-tokens.repository';
+
+@Module({
+  providers: [EmailTokensRepository],
+  exports: [EmailTokensRepository],
+})
+export class EmailTokensModule {}
+```
+
+#### 4. Criar `apps/api/src/modules/audit/audit.module.ts`
+
+```typescript
+import { Module } from '@nestjs/common';
+import { AuditLogsRepository } from './audit-logs.repository';
+
+@Module({
+  providers: [AuditLogsRepository],
+  exports: [AuditLogsRepository],
+})
+export class AuditModule {}
+```
+
+### Imports de entities
+
+As entities foram criadas na T3:
+- `emailTokens`, `EmailToken`, `NewEmailToken` em `./email-token.entity`
+  - O tipo de `type` é inferido do enum `emailTokenTypeEnum`
+- `auditLogs`, `AuditLog`, `NewAuditLog` em `./audit-log.entity`
+
+Para o tipo do `type` no EmailTokensRepository, use o tipo inferido da entity:
+```typescript
+import { emailTokens, type EmailToken } from './email-token.entity';
+// O tipo de type é: typeof emailTokens.$inferInsert['type']
+// Ou importe o enum do shared:
+import type { EmailTokenType } from './email-token.entity'; // se existir
+```
+Caso o tipo do enum não esteja exportado na entity, use `'email_confirmation' | 'password_reset' | 'invite'` diretamente.
+
+### Escopo de arquivos
+
+Você só pode criar/alterar:
+- `apps/api/src/modules/email-tokens/email-tokens.repository.ts` (novo)
+- `apps/api/src/modules/email-tokens/email-tokens.module.ts` (novo)
+- `apps/api/src/modules/audit/audit-logs.repository.ts` (novo)
+- `apps/api/src/modules/audit/audit.module.ts` (novo)
+
+Nenhum outro arquivo.
+
+### Critérios de aceite
+
+1. `pnpm --filter @starter/api lint` — sem erros (warnings ok)
+2. `pnpm --filter @starter/api typecheck` — sem erros
+3. `pnpm --filter @starter/api test` — todos os testes passam (os existentes não podem quebrar)
+
+### Commit
+
+Após todos os critérios passarem:
+```
+feat(api): add email tokens and audit repositories
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+```
+
+Inclua no commit os 4 arquivos novos.
+
+### Regras inegociáveis
+
+- Nunca use `any` sem justificativa
+- Nunca use `eslint-disable`, `@ts-ignore` ou `@ts-expect-error`
+- Não instale dependências novas
+- Não modifique arquivos fora do escopo listado
+- Service não importa `drizzle-orm` — só o repository
+- Controller não importa repository diretamente
+- Comentários só onde o porquê não é óbvio (não docstrings desnecessárias)

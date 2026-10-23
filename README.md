@@ -54,6 +54,6 @@ pnpm --filter @starter/api start:dev
 
 ## Decisões
 
-- ADR: [`docs/adr/0001-template-base-monorepo.md`](docs/adr/0001-template-base-monorepo.md)
+- ADR: [`docs/adr/0002-template-enxuto-v1.md`](docs/adr/0002-template-enxuto-v1.md) (o [0001](docs/adr/0001-template-base-monorepo.md) está arquivado)
 - Spec desta fundação: [`docs/specs/F0-fundacao.md`](docs/specs/F0-fundacao.md)
 - Spec do banco e base da API: [`docs/specs/F1-banco-e-base-da-api.md`](docs/specs/F1-banco-e-base-da-api.md)

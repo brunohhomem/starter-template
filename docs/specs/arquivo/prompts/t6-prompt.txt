@@ -1,0 +1,287 @@
+Você é o executor de uma tarefa num monorepo pnpm. Leia tudo antes de escrever qualquer código.
+
+## Contexto do projeto
+
+Monorepo pnpm. API em `apps/api` com NestJS + BullMQ + Redis.
+- BullMQ instalado: v6.4.0 (verifique a API de `upsertJobScheduler` em node_modules/bullmq antes de usar)
+- `pnpm --filter @starter/api typecheck` — typecheck
+- `pnpm --filter @starter/api test` — testes unitários (Jest)
+- `pnpm --filter @starter/api lint` — lint
+- `pnpm test:integration` — testes de integração (requer Redis e Postgres reais)
+
+## Contexto existente importante
+
+### Redis
+O `RedisModule` exporta `REDIS` com `maxRetriesPerRequest: 3`. BullMQ precisa de conexão **própria** com `maxRetriesPerRequest: null`. Crie a conexão BullMQ como `new IORedis({ host, port, password, maxRetriesPerRequest: null })` usando os mesmos `REDIS_HOST/PORT/PASSWORD` da config.
+
+### MailService existente
+`apps/api/src/modules/mail/mail.service.ts` já tem `sendNow(message: MailMessage): Promise<void>`. O worker chama isso.
+
+### Templates existentes
+`apps/api/src/modules/mail/templates/render-email.ts` exporta:
+```typescript
+type TemplateMap = {
+  emailConfirmation: EmailConfirmationProps;
+  passwordReset: PasswordResetProps;
+  invite: InviteProps;
+};
+export async function renderEmail<T extends keyof TemplateMap>(
+  template: T,
+  props: TemplateMap[T],
+): Promise<{ subject: string; html: string; text: string }>
+export function formatExpiresInLabel(value: number, unit: 'hours' | 'minutes' | 'days'): string
+```
+Chaves do TemplateMap são camelCase: `emailConfirmation`, `passwordReset`, `invite`.
+
+### Env config existente
+`apps/api/src/config/env.schema.ts` já tem: `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `MAIL_FROM`, `APP_NAME`, `WEB_ORIGIN`, `EMAIL_CONFIRM_TTL_HOURS`, `PASSWORD_RESET_TTL_MINUTES`, `INVITE_TTL_DAYS`.
+
+### Módulo de mail existente
+`apps/api/src/modules/mail/mail.module.ts`:
+```typescript
+@Global()
+@Module({
+  providers: [MailService, SmtpTransport, ResendTransport, MemoryTransport],
+  exports: [MailService],
+})
+export class MailModule {}
+```
+
+### Worker entry point existente (main.ts como referência)
+`apps/api/src/main.ts` usa `NestFactory.create(AppModule)`. O worker usa `NestFactory.createApplicationContext(WorkerModule)`.
+
+### Testes de integração existentes
+Setup está em `apps/api/test/integration-setup.ts` e `integration-setup-env.ts`. Use `apps/api/test/integration-utils.ts` para `createTestApp`, `resetDatabase`, `closeTestApp`. As suítes existentes importam esses helpers.
+
+## Tarefa T6 — Fila, processor, worker e limpeza
+
+### Decisões relevantes da spec
+
+**Decisão 3.5 — Token no payload do job:**
+Job carrega o token em claro. Mitigação: `removeOnComplete: true`, `removeOnFail: { age: 3600 }`, `attempts: 5`, backoff exponencial de 10s. Risco aceito e documentado.
+
+**Decisão 3.6 — Worker separado:**
+Processo separado (`apps/api/src/worker.ts`, `NestFactory.createApplicationContext`). A API só enfileira; nunca processa. Em testes, o worker sobe dentro do processo do teste.
+
+**Decisão 3.7 — Falha ao enfileirar:**
+Não derruba a operação principal. Loga `warn` sem dados pessoais e segue.
+
+**Decisão 3.16 — Limpeza:**
+Job diário no worker: apaga sessões expiradas há mais de 7 dias e tokens de e-mail expirados há mais de 7 dias.
+
+### Bloco Fila (de R4)
+
+**Fila `mail`**: jobs `send-email-confirmation`, `send-password-reset`, `send-invite`. Payload validado com zod **no processor** (entrada tratada como `unknown`):
+```typescript
+{ to: string /* email */, token: string, expiresAt: string /* ISO */ }
+```
+Opções padrão: `attempts: 5`, `backoff: { type: 'exponential', delay: 10000 }`, `removeOnComplete: true`, `removeOnFail: { age: 3600 }`.
+
+Erro 4xx do Resend ou e-mail inválido lança `UnrecoverableError` (importado de `bullmq`).
+
+**Fila `maintenance`**: job repetível `cleanup-expired`, cron `0 6 * * *` (UTC), registrado no boot do worker, idempotente.
+
+### O que implementar
+
+#### 1. `MailQueueService` (produtor) — `apps/api/src/modules/mail/mail-queue.service.ts`
+
+```typescript
+@Injectable()
+export class MailQueueService {
+  async enqueue(job: MailJob): Promise<void>
+}
+```
+
+Onde `MailJob` é uma union:
+```typescript
+type MailJob =
+  | { type: 'send-email-confirmation'; payload: { to: string; token: string; expiresAt: string } }
+  | { type: 'send-password-reset'; payload: { to: string; token: string; expiresAt: string } }
+  | { type: 'send-invite'; payload: { to: string; token: string; expiresAt: string } };
+```
+
+- Usa BullMQ `Queue` da fila `mail`
+- Falha silenciosa: se o `add` lançar, loga `warn` (sem dados pessoais) e **não relança**
+- Opções de job: `attempts: 5`, `backoff: { type: 'exponential', delay: 10000 }`, `removeOnComplete: true`, `removeOnFail: { age: 3600 }`
+- Conexão BullMQ própria com `maxRetriesPerRequest: null`
+
+#### 2. `MailProcessor` (consumidor) — `apps/api/src/modules/mail/mail.processor.ts`
+
+- BullMQ `Worker` da fila `mail`
+- Recebe `job: Job<unknown>` — valida o payload com zod antes de usar
+- Schema zod para o payload: `z.object({ to: z.string().email(), token: z.string(), expiresAt: z.string() })`
+- Se a validação falhar: lança `new UnrecoverableError('Invalid job payload')` (sem retry)
+- Para cada tipo de job:
+  - Monta o link com `WEB_ORIGIN` (sem barra dupla):
+    - `send-email-confirmation`: `${WEB_ORIGIN}/confirm-email?token=${token}`
+    - `send-password-reset`: `${WEB_ORIGIN}/reset-password?token=${token}`
+    - `send-invite`: `${WEB_ORIGIN}/accept-invite?token=${token}`
+  - Calcula `expiresInLabel` com `formatExpiresInLabel` usando os TTLs da config
+  - Renderiza com `renderEmail(...)` (chaves camelCase: `emailConfirmation`, `passwordReset`, `invite`)
+  - Chama `MailService.sendNow({ from: env.MAIL_FROM, to, subject, html, text })`
+- Erro `UnrecoverableError` para: e-mail inválido, payload malformado, erro 4xx do transporte
+- Para testar erros 4xx: o `MailService.sendNow` pode lançar um erro com `status` 4xx — verifique se é 4xx e lance `UnrecoverableError`
+
+#### 3. `WorkerModule` — `apps/api/src/modules/worker/worker.module.ts`
+
+Módulo NestJS que integra `MailModule`, `DatabaseModule`, `AppConfigModule`, e os dois processors:
+- `MailProcessor` — processa fila `mail`
+- `MaintenanceProcessor` — processa fila `maintenance`
+
+```typescript
+@Module({
+  imports: [AppConfigModule, DatabaseModule, MailModule],
+  providers: [MailProcessor, MaintenanceProcessor],
+})
+export class WorkerModule {}
+```
+
+#### 4. `MaintenanceProcessor` — `apps/api/src/modules/maintenance/maintenance.processor.ts`
+
+- BullMQ `Worker` da fila `maintenance`
+- Job `cleanup-expired`:
+  - Deleta da tabela `email_tokens` onde `expires_at < (now() - interval '7 days')`
+  - Deleta da tabela `sessions` onde `expires_at < (now() - interval '7 days')` (use Drizzle com `lt` e `sql\`now() - interval '7 days'\``)
+  - Loga quantos foram deletados (sem dados pessoais)
+- Usa `@Inject(DATABASE)` para obter o Drizzle db
+
+#### 5. Worker entry point — `apps/api/src/worker.ts`
+
+```typescript
+import 'reflect-metadata';
+import { NestFactory } from '@nestjs/core';
+import { loadEnv } from './config/load-env';
+import { WorkerModule } from './modules/worker/worker.module';
+import { Logger } from 'nestjs-pino';
+import IORedis from 'ioredis';
+
+async function bootstrap() {
+  const env = loadEnv();
+  const app = await NestFactory.createApplicationContext(WorkerModule, { bufferLogs: true });
+  app.useLogger(app.get(Logger));
+
+  // Registra job scheduler para cleanup-expired
+  const connection = new IORedis({
+    host: env.REDIS_HOST,
+    port: env.REDIS_PORT,
+    password: env.REDIS_PASSWORD,
+    maxRetriesPerRequest: null,
+  });
+
+  const { Queue } = await import('bullmq');
+  const maintenanceQueue = new Queue('maintenance', { connection });
+
+  // upsertJobScheduler (BullMQ v5+) ou fallback com add+repeat
+  // Verifique se maintenanceQueue.upsertJobScheduler existe antes de usar
+  if (typeof (maintenanceQueue as unknown as { upsertJobScheduler?: unknown }).upsertJobScheduler === 'function') {
+    await (maintenanceQueue as unknown as { upsertJobScheduler: (name: string, repeatOpts: unknown, template: unknown) => Promise<void> }).upsertJobScheduler(
+      'cleanup-expired',
+      { pattern: '0 6 * * *' },
+      { name: 'cleanup-expired', data: {} },
+    );
+  } else {
+    await maintenanceQueue.add('cleanup-expired', {}, {
+      repeat: { pattern: '0 6 * * *' },
+      jobId: 'cleanup-expired',
+    });
+  }
+
+  await maintenanceQueue.close();
+  await connection.quit();
+
+  console.log('[worker] Workers iniciados e scheduler registrado');
+}
+
+void bootstrap();
+```
+
+**Nota importante:** Verifique a API real do BullMQ v6.4.0 em `node_modules/bullmq/dist/esm/interfaces/` antes de escrever o código de `upsertJobScheduler`. O objetivo é não duplicar o job repetível ao reiniciar o worker.
+
+#### 6. Scripts no `apps/api/package.json`
+
+Adicionar (ou completar se já existir):
+```json
+"worker": "node dist/worker.js",
+"worker:dev": "ts-node -r tsconfig-paths/register src/worker.ts"
+```
+
+#### 7. Helper de teste — `apps/api/test/test-worker.ts`
+
+```typescript
+import { INestApplicationContext } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { WorkerModule } from '../src/modules/worker/worker.module';
+import { MemoryTransport } from '../src/modules/mail/transports/memory.transport';
+
+export async function startTestWorker(queuePrefix: string): Promise<{
+  app: INestApplicationContext;
+  memoryTransport: MemoryTransport;
+  close: () => Promise<void>;
+}> {
+  // WorkerModule customizado para testes com prefixo único e MemoryTransport
+  // O queuePrefix garante isolamento entre suítes paralelas
+  // ...implementação a seu critério, mas deve:
+  // 1. Criar WorkerModule com queue prefix único
+  // 2. Usar NODE_ENV=test (MAIL_DRIVER=memory já é garantido pelo env de teste)
+  // 3. Retornar o MemoryTransport para inspeção dos e-mails enviados
+  // 4. Retornar close() que faz app.close()
+}
+```
+
+O executor deve decidir como passar o `queuePrefix` para `MailProcessor` e `MaintenanceProcessor`. Uma abordagem: receber via um token de injeção `QUEUE_PREFIX` com default `''`.
+
+#### 8. Testes de integração — `apps/api/test/mail-queue.int-spec.ts`
+
+Testes obrigatórios (use Redis e MemoryTransport reais):
+
+1. **Job processado entrega 1 mensagem**: enfileira `send-email-confirmation`, aguarda processamento, verifica `memoryTransport.sent.length === 1`
+2. **Payload inválido não envia e vai para falha sem retry**: job com payload sem `to` → `UnrecoverableError` → `job.isFailed()` sem retentativas
+3. **Erro recuperável retenta**: mock que falha 2 vezes e passa na 3ª → `job.isCompleted()`
+4. **Erro irrecuperável não retenta**: `UnrecoverableError` → `failedReason` contém o erro, `attemptsMade === 1`
+5. **Após completar, job não existe mais no Redis**: `removeOnComplete: true` — após `job.isCompleted()`, buscar o job por id e verificar que é `null`
+6. **`cleanup-expired` apaga sessões e tokens vencidos há mais de 7 dias e preserva os recentes**
+7. **Registrar o scheduler duas vezes não duplica**: chamar `upsertJobScheduler` (ou equivalente) 2x e verificar que há apenas 1 job repetível
+
+### Escopo de arquivos
+
+Você só pode criar/alterar:
+- `apps/api/src/modules/mail/mail-queue.service.ts` (novo)
+- `apps/api/src/modules/mail/mail.processor.ts` (novo)
+- `apps/api/src/modules/mail/mail.module.ts` (alterar: adicionar MailQueueService)
+- `apps/api/src/modules/maintenance/maintenance.processor.ts` (novo)
+- `apps/api/src/modules/maintenance/maintenance.module.ts` (novo, opcional)
+- `apps/api/src/modules/worker/worker.module.ts` (novo)
+- `apps/api/src/worker.ts` (novo)
+- `apps/api/test/test-worker.ts` (novo)
+- `apps/api/test/mail-queue.int-spec.ts` (novo)
+- `apps/api/package.json` (adicionar scripts worker e worker:dev)
+
+Nenhum outro arquivo.
+
+### Critérios de aceite
+
+1. `pnpm --filter @starter/api lint` — sem erros
+2. `pnpm --filter @starter/api typecheck` — sem erros
+3. `pnpm --filter @starter/api test` — todos os testes existentes passam (os novos de integração não contam aqui — estão em `mail-queue.int-spec.ts`)
+4. `pnpm test:integration` — **todos** os testes de integração passam (incluindo os novos)
+
+### Commit
+
+Após todos os critérios passarem:
+```
+feat(api): add mail queue, worker and cleanup job
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+```
+
+### Regras inegociárias
+
+- Nunca use `any` sem justificativa — dado de fora entra como `unknown` e é validado com zod
+- Nunca use `eslint-disable`, `@ts-ignore` ou `@ts-expect-error`
+- Não instale dependências novas
+- Não modifique arquivos fora do escopo listado
+- BullMQ usa conexão **própria** com `maxRetriesPerRequest: null` — nunca reutilize o cliente do RedisModule
+- Prefixo de fila único por suíte de teste (armadilha 2 da spec)
+- Não logar o token nem o e-mail completo em `info`
+- Jobs de limpeza repetíveis com id estável para não duplicar (armadilha 5)
+- `upsertJobScheduler` assinatura em BullMQ v6: verificar em `node_modules/bullmq` antes de usar — pode ser `(name, repeatOptions, jobTemplate?)` — não adivinhe, leia a API

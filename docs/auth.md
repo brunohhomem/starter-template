@@ -27,13 +27,19 @@ Limpar cookies = mesmo nome, path e flags com `Max-Age=0`. Sem atributo `Domain`
 
 ## Throttler
 
-| Endpoint                     | Limite       | Janela | Bloqueio | Chave       |
-| ---------------------------- | ------------ | ------ | -------- | ----------- |
-| Todas as rotas (`default`)   | 120 req      | 60 s   | —        | IP          |
-| `POST /auth/login`           | 5 tentativas | 15 min | 15 min   | IP + e-mail |
-| `POST /auth/register`        | 5            | 60 min | 60 min   | IP          |
-| `POST /auth/refresh`         | 30           | 60 s   | —        | IP          |
-| `POST /auth/change-password` | 5            | 15 min | 15 min   | userId      |
+| Endpoint                        | Limite | Janela | Bloqueio | Chave       |
+| ------------------------------- | ------ | ------ | -------- | ----------- |
+| Todas as rotas (`default`)      | 120    | 60 s   | —        | IP          |
+| `POST /auth/login`              | 5      | 15 min | 15 min   | IP + e-mail |
+| `POST /auth/register`           | 5      | 60 min | 60 min   | IP          |
+| `POST /auth/refresh`            | 30     | 60 s   | —        | IP          |
+| `POST /auth/change-password`    | 5      | 15 min | 15 min   | userId      |
+| `POST /auth/password/forgot`    | 3      | 60 min | 60 min   | IP + e-mail |
+| `POST /auth/email/confirm`      | 10     | 15 min | 15 min   | IP          |
+| `POST /auth/password/reset`     | 10     | 15 min | 15 min   | IP          |
+| `POST /auth/invitations/accept` | 10     | 15 min | 15 min   | IP          |
+| `POST /auth/email/resend`       | 3      | 60 min | 60 min   | userId      |
+| `POST /auth/invitations`        | 20     | 60 min | —        | userId      |
 
 Resposta 429 inclui header `Retry-After` (segundos) e `code: RATE_LIMITED`.
 Redis indisponível: falha aberta — a requisição é permitida e um `warn` é logado.
@@ -90,8 +96,26 @@ async health() { ... }
 
 > **Regra:** `@Public()` exige justificativa em comentário de uma linha imediatamente acima do decorator. Toda rota nova é protegida por padrão.
 
+## Rotas de e-mail e convite (F3)
+
+| Rota                            | Acesso      | HTTP | Descrição                                                   |
+| ------------------------------- | ----------- | ---: | ----------------------------------------------------------- |
+| `POST /auth/email/confirm`      | público     |  204 | Confirma o e-mail com o token do link                       |
+| `POST /auth/email/resend`       | autenticado |  202 | Reenvia e-mail de confirmação (erro 409 se já confirmado)   |
+| `POST /auth/password/forgot`    | público     |  202 | Solicita link de reset (sempre 202 — anti-enumeração)       |
+| `POST /auth/password/reset`     | público     |  204 | Redefine a senha; revoga todas as sessões                   |
+| `POST /auth/invitations`        | admin       |  201 | Convida um e-mail; retorna `{ id, email, role, expiresAt }` |
+| `POST /auth/invitations/accept` | público     |  200 | Aceita o convite, define senha, inicia sessão               |
+
+## Configurações (`/settings`)
+
+| Rota                   | Acesso  | HTTP | Descrição                                        |
+| ---------------------- | ------- | ---: | ------------------------------------------------ |
+| `GET /settings/public` | público |  200 | `{ registrationEnabled }` — usado pelo frontend  |
+| `GET /settings`        | admin   |  200 | Todas as configurações                           |
+| `PATCH /settings`      | admin   |  200 | Atualiza `registrationEnabled`; audita a mudança |
+
 ## Limitações aceitas
 
 - Mudança de papel ou desativação de usuário vale no **próximo refresh** (≤ 15 min) — o access token já emitido permanece válido.
-- `email_verified_at` existe na tabela mas **não é validado no login** — confirmação de e-mail é F3.
-- Sem recuperação de senha por e-mail (F3).
+- O token de e-mail trafega no payload da fila BullMQ e no link do e-mail — risco aceito; veja `docs/email.md`.

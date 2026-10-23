@@ -26,6 +26,15 @@ const validRawEnv: Record<string, string | undefined> = {
   AUTH_REFRESH_TTL_DAYS: '7',
   AUTH_REFRESH_REUSE_GRACE_SECONDS: '10',
   AUTH_BCRYPT_ROUNDS: '12',
+  MAIL_DRIVER: 'smtp',
+  MAIL_FROM: 'Starter <no-reply@localhost>',
+  APP_NAME: 'Starter Template',
+  SMTP_HOST: 'localhost',
+  SMTP_PORT: '1025',
+  RESEND_API_KEY: '',
+  EMAIL_CONFIRM_TTL_HOURS: '24',
+  PASSWORD_RESET_TTL_MINUTES: '30',
+  INVITE_TTL_DAYS: '7',
 };
 
 const validParsedEnv: Env = {
@@ -56,6 +65,15 @@ const validParsedEnv: Env = {
   AUTH_REFRESH_TTL_DAYS: 7,
   AUTH_REFRESH_REUSE_GRACE_SECONDS: 10,
   AUTH_BCRYPT_ROUNDS: 12,
+  MAIL_DRIVER: 'smtp',
+  MAIL_FROM: 'Starter <no-reply@localhost>',
+  APP_NAME: 'Starter Template',
+  SMTP_HOST: 'localhost',
+  SMTP_PORT: 1025,
+  RESEND_API_KEY: '',
+  EMAIL_CONFIRM_TTL_HOURS: 24,
+  PASSWORD_RESET_TTL_MINUTES: 30,
+  INVITE_TTL_DAYS: 7,
 };
 
 describe('env.schema', () => {
@@ -99,7 +117,13 @@ describe('env.schema', () => {
   });
 
   it('exige TRUST_PROXY_HOPS em produção', () => {
-    const prodRawEnv = { ...validRawEnv, NODE_ENV: 'production', TRUST_PROXY_HOPS: '1' };
+    const prodRawEnv = {
+      ...validRawEnv,
+      NODE_ENV: 'production',
+      TRUST_PROXY_HOPS: '1',
+      MAIL_DRIVER: 'resend',
+      RESEND_API_KEY: 'test-key',
+    };
     const env = validateEnv(prodRawEnv);
     expect(env.TRUST_PROXY_HOPS).toBe(1);
     expect(env.COOKIE_SECURE).toBe(true);

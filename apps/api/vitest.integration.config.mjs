@@ -11,8 +11,9 @@ export default defineConfig({
     include: ['test/**/*.int-spec.ts'],
     setupFiles: ['./test/integration-setup-env.ts'],
     pool: 'forks',
-    singleThread: true,
+    singleFork: true,
     testTimeout: 30000,
+    fileParallelism: false,
   },
   resolve: {
     alias: {

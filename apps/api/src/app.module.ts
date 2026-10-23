@@ -9,6 +9,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { RedisModule } from './redis/redis.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { MailModule } from './modules/mail/mail.module';
 import { ZodValidationPipe } from './common/pipes/zod-validation.pipe';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ZodSerializerInterceptor } from 'nestjs-zod';
@@ -30,6 +31,7 @@ import Redis from 'ioredis';
     SettingsModule,
     HealthModule,
     AuthModule,
+    MailModule,
     ThrottlerModule.forRootAsync({
       imports: [RedisModule.forRoot()],
       inject: [REDIS],
@@ -62,6 +64,29 @@ import Redis from 'ioredis';
             limit: 5,
             ttl: 900000, // 15 minutes in ms
             blockDuration: 900000, // 15 minutes in ms
+          },
+          {
+            name: 'forgot',
+            limit: 3,
+            ttl: 3600000, // 60 minutes in ms
+            blockDuration: 3600000,
+          },
+          {
+            name: 'token-submit',
+            limit: 10,
+            ttl: 900000, // 15 minutes in ms
+            blockDuration: 900000,
+          },
+          {
+            name: 'resend',
+            limit: 3,
+            ttl: 3600000, // 60 minutes in ms
+            blockDuration: 3600000,
+          },
+          {
+            name: 'invite',
+            limit: 20,
+            ttl: 3600000, // 60 minutes in ms
           },
         ],
         storage: new FailOpenRedisThrottlerStorage(redis),

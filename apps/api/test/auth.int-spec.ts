@@ -1,39 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
-import { createTestApp, closeTestApp, resetDatabase } from './integration-utils';
+import { createTestApp, closeTestApp, resetDatabase, resetThrottle } from './integration-utils';
 import { setupTestDatabase, teardownTestDatabase, getTestPool } from './integration-setup';
 import { getTestDb } from './integration-setup';
 import Redis from 'ioredis';
-import { getEnv } from '../src/config/load-env';
 import { JwtService } from '@nestjs/jwt';
+import { getEnv } from '../src/config/load-env';
 import { seedAdmin } from '../src/database/seed/admin.seed';
-
-/**
- * Helper para limpar throttler keys no Redis antes de cada teste de auth
- */
-async function resetThrottle(): Promise<void> {
-  const env = getEnv();
-  const redis = new Redis({
-    host: env.REDIS_HOST,
-    port: env.REDIS_PORT,
-    password: env.REDIS_PASSWORD,
-    maxRetriesPerRequest: 1,
-    retryStrategy: () => null,
-    lazyConnect: true,
-  });
-  try {
-    await redis.connect();
-    const keys = await redis.keys('throttle:*');
-    if (keys.length > 0) {
-      await redis.del(...keys);
-    }
-  } catch {
-    // Ignore Redis errors in tests - fail-open behavior
-  } finally {
-    await redis.quit();
-  }
-}
 
 describe('Auth integration (T11)', () => {
   let app: INestApplication;
