@@ -19,6 +19,7 @@ allowBuilds:
   '@swc/core': true
   bcrypt@6.0.0: true
   bcrypt: true
+  msgpackr-extract: true
 
 minimumReleaseAgeExclude:
   - '@turbo/darwin-64@2.11.10'
