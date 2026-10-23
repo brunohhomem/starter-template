@@ -1,0 +1,327 @@
+Você é o executor de uma tarefa num monorepo pnpm. Leia tudo antes de escrever qualquer código.
+
+## Contexto do projeto
+
+Monorepo pnpm. API em `apps/api` com NestJS + React Email.
+- `apps/api/tsconfig.json` já tem `"jsx": "react-jsx"` e inclui `"src/**/*.tsx"`
+- Dependências já instaladas: `react`, `react-dom`, `@react-email/components`, `@react-email/render`, `@types/react`
+- `pnpm --filter @starter/api typecheck` — typecheck
+- `pnpm --filter @starter/api test` — testes unitários (Jest)
+- `pnpm --filter @starter/api lint` — lint
+
+## Tarefa T5 — Templates React Email
+
+### Especificação (da F3)
+
+**Textos (pt-BR)**:
+
+| Template | Assunto | Corpo (essencial) |
+|---|---|---|
+| `email-confirmation` | `Confirme seu e-mail` | saudação, botão "Confirmar e-mail" com o link, validade em horas, "Se você não criou esta conta, ignore esta mensagem." |
+| `password-reset` | `Redefinição de senha` | botão "Redefinir senha", validade em minutos, "Se você não pediu, ignore. Sua senha continua a mesma." |
+| `invite` | `Você foi convidado para o {APP_NAME}` | botão "Aceitar convite", validade em dias |
+
+Todos terminam com o nome do app e repetem o link em texto puro.
+
+**Decisões**:
+- E-mails em pt-BR, texto puro + HTML, sem imagens externas
+- Nenhum valor vindo do usuário entra como HTML — React Email escapa por padrão; proibido `dangerouslySetInnerHTML`
+- `expiresInLabel` é calculado fora do template (ex.: "24 horas", "30 minutos", "7 dias"; singular correto)
+
+### O que implementar
+
+#### 1. Props tipadas para cada template
+
+```typescript
+export interface EmailConfirmationProps {
+  appName: string;
+  link: string;
+  expiresInLabel: string; // "24 horas", "1 hora", etc.
+  recipientName?: string;
+}
+
+export interface PasswordResetProps {
+  appName: string;
+  link: string;
+  expiresInLabel: string; // "30 minutos", "1 minuto", etc.
+  recipientName?: string;
+}
+
+export interface InviteProps {
+  appName: string;
+  link: string;
+  expiresInLabel: string; // "7 dias", "1 dia", etc.
+  recipientName?: string;
+}
+```
+
+#### 2. Criar o layout base `apps/api/src/modules/mail/templates/layout.tsx`
+
+Um componente React simples que envolve o conteúdo dos templates. Pode usar `@react-email/components`:
+- `Html`, `Body`, `Container`, `Text`, `Section` (use o que fizer sentido)
+- Estilo inline simples (sem CSS externo)
+
+Exemplo de estrutura mínima:
+```tsx
+import { Html, Body, Container, Section, Text } from '@react-email/components';
+
+interface LayoutProps {
+  appName: string;
+  children: React.ReactNode;
+}
+
+export function EmailLayout({ appName, children }: LayoutProps) {
+  return (
+    <Html lang="pt-BR">
+      <Body style={{ fontFamily: 'sans-serif', backgroundColor: '#f9f9f9' }}>
+        <Container style={{ maxWidth: '600px', margin: '0 auto', backgroundColor: '#ffffff', padding: '24px' }}>
+          {children}
+          <Section>
+            <Text style={{ color: '#666', fontSize: '12px', marginTop: '32px' }}>
+              {appName}
+            </Text>
+          </Section>
+        </Container>
+      </Body>
+    </Html>
+  );
+}
+```
+
+#### 3. Criar os 3 templates
+
+**`apps/api/src/modules/mail/templates/email-confirmation.tsx`**
+
+```tsx
+import { Button, Link, Section, Text } from '@react-email/components';
+import { EmailLayout } from './layout';
+import type { EmailConfirmationProps } from './render-email';
+
+export function EmailConfirmationTemplate({ appName, link, expiresInLabel, recipientName }: EmailConfirmationProps) {
+  return (
+    <EmailLayout appName={appName}>
+      <Section>
+        {recipientName && <Text>Olá, {recipientName}!</Text>}
+        <Text>Confirme seu endereço de e-mail clicando no botão abaixo.</Text>
+        <Button href={link} style={{ backgroundColor: '#000', color: '#fff', padding: '12px 24px', borderRadius: '4px', display: 'inline-block' }}>
+          Confirmar e-mail
+        </Button>
+        <Text>Este link expira em {expiresInLabel}.</Text>
+        <Text>Se você não criou esta conta, ignore esta mensagem.</Text>
+        <Text>Ou acesse diretamente: <Link href={link}>{link}</Link></Text>
+      </Section>
+    </EmailLayout>
+  );
+}
+```
+
+**`apps/api/src/modules/mail/templates/password-reset.tsx`**:
+- Botão "Redefinir senha" com `href={link}`
+- "Este link expira em {expiresInLabel}."
+- "Se você não pediu, ignore. Sua senha continua a mesma."
+- Link em texto puro no final
+
+**`apps/api/src/modules/mail/templates/invite.tsx`**:
+- Assunto dinamicamente usa `appName`
+- Botão "Aceitar convite" com `href={link}`
+- "Este convite expira em {expiresInLabel}."
+- Link em texto puro no final
+
+#### 4. Criar `apps/api/src/modules/mail/templates/render-email.ts`
+
+Este é o arquivo principal — função pura que renderiza um template.
+
+```typescript
+import { render } from '@react-email/render';
+import React from 'react';
+import { EmailConfirmationTemplate } from './email-confirmation';
+import { PasswordResetTemplate } from './password-reset';
+import { InviteTemplate } from './invite';
+
+export interface EmailConfirmationProps {
+  appName: string;
+  link: string;
+  expiresInLabel: string;
+  recipientName?: string;
+}
+
+export interface PasswordResetProps {
+  appName: string;
+  link: string;
+  expiresInLabel: string;
+  recipientName?: string;
+}
+
+export interface InviteProps {
+  appName: string;
+  link: string;
+  expiresInLabel: string;
+  recipientName?: string;
+}
+
+type TemplateMap = {
+  'email-confirmation': EmailConfirmationProps;
+  'password-reset': PasswordResetProps;
+  'invite': InviteProps;
+};
+
+export async function renderEmail<T extends keyof TemplateMap>(
+  template: T,
+  props: TemplateMap[T],
+): Promise<{ subject: string; html: string; text: string }> {
+  switch (template) {
+    case 'email-confirmation': {
+      const p = props as EmailConfirmationProps;
+      const html = await render(React.createElement(EmailConfirmationTemplate, p));
+      const text = await render(React.createElement(EmailConfirmationTemplate, p), { plainText: true });
+      return { subject: 'Confirme seu e-mail', html, text };
+    }
+    case 'password-reset': {
+      const p = props as PasswordResetProps;
+      const html = await render(React.createElement(PasswordResetTemplate, p));
+      const text = await render(React.createElement(PasswordResetTemplate, p), { plainText: true });
+      return { subject: 'Redefinição de senha', html, text };
+    }
+    case 'invite': {
+      const p = props as InviteProps;
+      const html = await render(React.createElement(InviteTemplate, p));
+      const text = await render(React.createElement(InviteTemplate, p), { plainText: true });
+      return { subject: `Você foi convidado para o ${p.appName}`, html, text };
+    }
+    default:
+      throw new Error(`Unknown email template: ${String(template)}`);
+  }
+}
+
+export function formatExpiresInLabel(value: number, unit: 'hours' | 'minutes' | 'days'): string {
+  switch (unit) {
+    case 'hours':
+      return value === 1 ? '1 hora' : `${value} horas`;
+    case 'minutes':
+      return value === 1 ? '1 minuto' : `${value} minutos`;
+    case 'days':
+      return value === 1 ? '1 dia' : `${value} dias`;
+  }
+}
+```
+
+#### 5. Criar testes `apps/api/src/modules/mail/templates/render-email.spec.ts`
+
+Testes Jest (não Vitest — a API usa Jest). Use `describe` e `it` globais. NÃO importe de `@jest/globals`.
+
+Testes obrigatórios:
+1. HTML de `email-confirmation` contém o link e o botão "Confirmar e-mail"
+2. Texto puro de `email-confirmation` contém o link
+3. Assunto correto por template (todos os 3)
+4. Valor com `<script>` em `appName` aparece escapado no HTML
+5. Singular/plural de `formatExpiresInLabel`: "1 hora", "2 horas", "1 minuto", "30 minutos", "1 dia", "7 dias"
+6. HTML de `password-reset` contém "Redefinir senha" e link
+7. HTML de `invite` contém "Aceitar convite" e link
+
+```typescript
+import { renderEmail, formatExpiresInLabel } from './render-email';
+
+describe('renderEmail', () => {
+  const baseProps = {
+    appName: 'Test App',
+    link: 'https://example.com/confirm?token=abc123',
+    expiresInLabel: '24 horas',
+  };
+
+  describe('email-confirmation', () => {
+    it('HTML contém o link e o botão', async () => {
+      const { html } = await renderEmail('email-confirmation', baseProps);
+      expect(html).toContain(baseProps.link);
+      expect(html).toContain('Confirmar e-mail');
+    });
+
+    it('texto puro contém o link', async () => {
+      const { text } = await renderEmail('email-confirmation', baseProps);
+      expect(text).toContain(baseProps.link);
+    });
+
+    it('assunto correto', async () => {
+      const { subject } = await renderEmail('email-confirmation', baseProps);
+      expect(subject).toBe('Confirme seu e-mail');
+    });
+
+    it('valor hostil em appName é escapado', async () => {
+      const { html } = await renderEmail('email-confirmation', {
+        ...baseProps,
+        appName: '"><img src=x onerror=alert(1)>',
+      });
+      expect(html).not.toContain('<img src=x onerror=alert(1)>');
+    });
+  });
+
+  describe('password-reset', () => {
+    it('HTML contém o link e o botão', async () => {
+      const { html } = await renderEmail('password-reset', { ...baseProps, expiresInLabel: '30 minutos' });
+      expect(html).toContain(baseProps.link);
+      expect(html).toContain('Redefinir senha');
+    });
+
+    it('assunto correto', async () => {
+      const { subject } = await renderEmail('password-reset', { ...baseProps, expiresInLabel: '30 minutos' });
+      expect(subject).toBe('Redefinição de senha');
+    });
+  });
+
+  describe('invite', () => {
+    it('HTML contém o link e o botão', async () => {
+      const { html } = await renderEmail('invite', { ...baseProps, expiresInLabel: '7 dias' });
+      expect(html).toContain(baseProps.link);
+      expect(html).toContain('Aceitar convite');
+    });
+
+    it('assunto usa appName', async () => {
+      const { subject } = await renderEmail('invite', { ...baseProps, expiresInLabel: '7 dias' });
+      expect(subject).toBe('Você foi convidado para o Test App');
+    });
+  });
+});
+
+describe('formatExpiresInLabel', () => {
+  it('singular hora', () => expect(formatExpiresInLabel(1, 'hours')).toBe('1 hora'));
+  it('plural horas', () => expect(formatExpiresInLabel(24, 'hours')).toBe('24 horas'));
+  it('singular minuto', () => expect(formatExpiresInLabel(1, 'minutes')).toBe('1 minuto'));
+  it('plural minutos', () => expect(formatExpiresInLabel(30, 'minutes')).toBe('30 minutos'));
+  it('singular dia', () => expect(formatExpiresInLabel(1, 'days')).toBe('1 dia'));
+  it('plural dias', () => expect(formatExpiresInLabel(7, 'days')).toBe('7 dias'));
+});
+```
+
+### Escopo de arquivos
+
+Você só pode criar/alterar:
+- `apps/api/src/modules/mail/templates/layout.tsx` (novo)
+- `apps/api/src/modules/mail/templates/email-confirmation.tsx` (novo)
+- `apps/api/src/modules/mail/templates/password-reset.tsx` (novo)
+- `apps/api/src/modules/mail/templates/invite.tsx` (novo)
+- `apps/api/src/modules/mail/templates/render-email.ts` (novo)
+- `apps/api/src/modules/mail/templates/render-email.spec.ts` (novo)
+
+Nenhum outro arquivo.
+
+### Critérios de aceite
+
+1. `pnpm --filter @starter/api test` — todos os testes passam (incluindo os novos)
+2. `pnpm --filter @starter/api typecheck` — sem erros
+3. `pnpm --filter @starter/api lint` — sem erros
+
+### Commit
+
+Após todos os critérios passarem:
+```
+feat(api): add transactional email templates
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+```
+
+### Regras inegociáveis
+
+- Nunca use `dangerouslySetInnerHTML` nos templates
+- Nunca use `any`
+- Não instale dependências novas
+- Não modifique arquivos fora do escopo listado
+- Os testes NÃO importam de `@jest/globals` — use os globais do Jest diretamente

@@ -2,7 +2,7 @@
 
 | Campo                  | Valor                                                                                                                           |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Status                 | Proposto (aguardando aprovação)                                                                                                 |
+| Status                 | **Arquivado** em 2026-10-23, substituído pelo [ADR 0002](0002-template-enxuto-v1.md)                                            |
 | Data                   | 2026-10-21                                                                                                                      |
 | Revisão                | v2 (2026-10-21): instruções para IA independentes de ferramenta e `DESIGN.md` (3.14), checklist de responsabilidade única (3.2) |
 | Decisor                | Bruno                                                                                                                           |

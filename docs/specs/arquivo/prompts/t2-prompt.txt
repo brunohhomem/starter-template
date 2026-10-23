@@ -1,0 +1,230 @@
+Você é o executor de uma tarefa num monorepo pnpm. Leia tudo antes de escrever qualquer código.
+
+## Contexto do projeto
+
+Monorepo pnpm. `packages/shared` é o pacote de contratos TypeScript compartilhado entre API (NestJS) e Web (Next.js).
+- Testes: Vitest (`pnpm --filter shared test`)
+- Build: `pnpm --filter shared build`
+- Typecheck: `pnpm typecheck` (na raiz)
+
+## Tarefa T2 — Contratos em `packages/shared`
+
+### O que já existe em `packages/shared/src/`
+
+**`auth/errors.ts`** — contém `AUTH_ERROR_CODES` (objeto const) com os seguintes códigos:
+```
+AUTH_INVALID_CREDENTIALS, AUTH_UNAUTHORIZED, AUTH_TOKEN_EXPIRED,
+AUTH_REFRESH_INVALID, AUTH_REFRESH_REUSED, AUTH_FORBIDDEN,
+AUTH_MUST_CHANGE_PASSWORD, AUTH_REGISTRATION_DISABLED, AUTH_EMAIL_TAKEN,
+AUTH_CSRF_BLOCKED, AUTH_PASSWORD_UNCHANGED, AUTH_CURRENT_PASSWORD_WRONG, RATE_LIMITED
+```
+Também exporta `AuthErrorCode`, `AUTH_ERROR_MESSAGES`, `authErrorMessage`.
+
+**`auth/schemas.ts`** — contém:
+- `emailSchema`, `passwordSchema`, `registerRequestSchema`, `loginRequestSchema`
+- `changePasswordRequestSchema`, `authUserSchema`, `authResponseSchema`
+- `USER_ROLES = ['admin', 'user'] as const`, `UserRole`
+
+**`auth/index.ts`** — re-exporta tudo de `errors.ts` e `schemas.ts`
+
+**`pagination.ts`** — contém:
+- `paginationQuerySchema` (page, pageSize, sortBy, sortOrder)
+- `paginatedResponseSchema<T>(itemSchema)` — função retorna schema com `items` e `meta`
+- `PaginationQuery`, `PaginatedResponse<T>`, `buildPageMeta`
+
+**`index.ts`** — re-exporta `role`, `error`, `pagination`, `auth`
+
+**`zod.ts`** — re-exporta zod
+
+### O que implementar
+
+#### 1. Acrescentar 3 códigos novos a `AUTH_ERROR_CODES` em `auth/errors.ts`
+
+```
+AUTH_EMAIL_TOKEN_INVALID: 'AUTH_EMAIL_TOKEN_INVALID'   // 400 — token inexistente, expirado, já usado ou de outro tipo
+AUTH_INVITE_EMAIL_TAKEN: 'AUTH_INVITE_EMAIL_TAKEN'     // 409 — convite para e-mail que já tem conta
+AUTH_EMAIL_ALREADY_CONFIRMED: 'AUTH_EMAIL_ALREADY_CONFIRMED'  // 409 — pedir reenvio para e-mail já confirmado
+```
+
+Acrescente também as mensagens pt-BR em `AUTH_ERROR_MESSAGES`:
+- `AUTH_EMAIL_TOKEN_INVALID`: `'Token inválido, expirado ou já utilizado'`
+- `AUTH_INVITE_EMAIL_TAKEN`: `'Este e-mail já possui uma conta'`
+- `AUTH_EMAIL_ALREADY_CONFIRMED`: `'E-mail já confirmado'`
+
+#### 2. Criar `packages/shared/src/email.ts` com os seguintes exports
+
+```typescript
+import { z } from './zod';
+import { emailSchema, passwordSchema } from './auth/schemas';
+import { paginationQuerySchema, paginatedResponseSchema } from './pagination';
+import { USER_ROLES } from './auth/schemas';
+
+// Token
+export const tokenSchema = z.string().min(32).max(128);
+
+// Confirmação de e-mail
+export const confirmEmailRequestSchema = z.object({ token: tokenSchema });
+
+// Recuperação de senha
+export const forgotPasswordRequestSchema = z.object({ email: emailSchema });
+export const FORGOT_PASSWORD_RESPONSE_MESSAGE =
+  'Se o e-mail estiver cadastrado, enviaremos as instruções.';
+export const forgotPasswordResponseSchema = z.object({ message: z.string() });
+
+// Reset de senha
+export const resetPasswordRequestSchema = z.object({
+  token: tokenSchema,
+  newPassword: passwordSchema,
+});
+
+// Convite
+export const createInvitationRequestSchema = z.object({
+  email: emailSchema,
+  role: z.enum(USER_ROLES),
+});
+export const invitationResponseSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string(),
+  role: z.enum(USER_ROLES),
+  expiresAt: z.string(),
+});
+export const acceptInvitationRequestSchema = z.object({
+  token: tokenSchema,
+  password: passwordSchema,
+});
+
+// Settings
+export const settingsResponseSchema = z.object({ registrationEnabled: z.boolean() });
+export const publicSettingsResponseSchema = z.object({ registrationEnabled: z.boolean() });
+export const updateSettingsRequestSchema = z
+  .object({ registrationEnabled: z.boolean().optional() })
+  .refine((data) => Object.values(data).some((v) => v !== undefined), {
+    message: 'Pelo menos um campo deve ser fornecido',
+  });
+
+// Auditoria
+export const AUDIT_ACTIONS = {
+  SETTINGS_REGISTRATION_CHANGED: 'settings.registration_changed',
+  AUTH_PASSWORD_RESET_REQUESTED: 'auth.password_reset_requested',
+  AUTH_PASSWORD_RESET_COMPLETED: 'auth.password_reset_completed',
+  AUTH_EMAIL_CONFIRMED: 'auth.email_confirmed',
+  AUTH_INVITATION_SENT: 'auth.invitation_sent',
+  AUTH_INVITATION_ACCEPTED: 'auth.invitation_accepted',
+} as const;
+
+export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
+
+export const auditLogSchema = z.object({
+  id: z.string().uuid(),
+  actorUserId: z.string().uuid().nullable(),
+  action: z.string(),
+  targetType: z.string().nullable(),
+  targetId: z.string().nullable(),
+  metadata: z.record(z.unknown()),
+  ip: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const auditLogsQuerySchema = paginationQuerySchema.extend({
+  action: z.string().optional(),
+});
+
+export const auditLogsResponseSchema = paginatedResponseSchema(auditLogSchema);
+
+// Types
+export type Token = z.infer<typeof tokenSchema>;
+export type ConfirmEmailRequest = z.infer<typeof confirmEmailRequestSchema>;
+export type ForgotPasswordRequest = z.infer<typeof forgotPasswordRequestSchema>;
+export type ForgotPasswordResponse = z.infer<typeof forgotPasswordResponseSchema>;
+export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>;
+export type CreateInvitationRequest = z.infer<typeof createInvitationRequestSchema>;
+export type InvitationResponse = z.infer<typeof invitationResponseSchema>;
+export type AcceptInvitationRequest = z.infer<typeof acceptInvitationRequestSchema>;
+export type SettingsResponse = z.infer<typeof settingsResponseSchema>;
+export type PublicSettingsResponse = z.infer<typeof publicSettingsResponseSchema>;
+export type UpdateSettingsRequest = z.infer<typeof updateSettingsRequestSchema>;
+export type AuditLog = z.infer<typeof auditLogSchema>;
+export type AuditLogsQuery = z.infer<typeof auditLogsQuerySchema>;
+export type AuditLogsResponse = z.infer<typeof auditLogsResponseSchema>;
+```
+
+#### 3. Re-exportar em `packages/shared/src/index.ts`
+
+Acrescentar no final:
+```typescript
+export * from './email';
+```
+
+#### 4. Criar testes em `packages/shared/src/email.test.ts`
+
+Os testes devem usar Vitest. Cobrir obrigatoriamente:
+
+a) `updateSettingsRequest` vazio rejeitado:
+```typescript
+it('updateSettingsRequestSchema rejeita objeto vazio', () => {
+  expect(updateSettingsRequestSchema.safeParse({}).success).toBe(false);
+});
+```
+
+b) `forgotPasswordResponse` com texto fixo exportado como constante:
+```typescript
+it('FORGOT_PASSWORD_RESPONSE_MESSAGE é a string esperada', () => {
+  expect(FORGOT_PASSWORD_RESPONSE_MESSAGE).toBe(
+    'Se o e-mail estiver cadastrado, enviaremos as instruções.'
+  );
+});
+
+it('forgotPasswordResponseSchema valida o corpo com a constante', () => {
+  const result = forgotPasswordResponseSchema.safeParse({
+    message: FORGOT_PASSWORD_RESPONSE_MESSAGE,
+  });
+  expect(result.success).toBe(true);
+});
+```
+
+c) `auditLogsQuery` herda limites de paginação (page, pageSize, max 100):
+```typescript
+it('auditLogsQuerySchema herda limites de paginação', () => {
+  expect(auditLogsQuerySchema.safeParse({ pageSize: 101 }).success).toBe(false);
+  expect(auditLogsQuerySchema.safeParse({ pageSize: 100 }).success).toBe(true);
+  const parsed = auditLogsQuerySchema.parse({});
+  expect(parsed.page).toBe(1);
+  expect(parsed.pageSize).toBe(20);
+});
+```
+
+Adicione também testes básicos para os outros schemas (tokenSchema, confirmEmailRequestSchema, resetPasswordRequestSchema, createInvitationRequestSchema).
+
+### Escopo de arquivos
+
+Você só pode criar/alterar:
+- `packages/shared/src/auth/errors.ts`
+- `packages/shared/src/email.ts` (novo)
+- `packages/shared/src/email.test.ts` (novo)
+- `packages/shared/src/index.ts`
+
+Nenhum outro arquivo.
+
+### Critérios de aceite
+
+Todos estes comandos devem passar sem erros:
+1. `pnpm --filter shared test`
+2. `pnpm --filter shared build`
+3. `pnpm typecheck`
+
+### Commit
+
+Após todos os critérios passarem, faça o commit:
+```
+feat(shared): add email, settings and audit contracts
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+```
+
+### Regras inegociáveis
+
+- Nunca use `any` sem justificativa; dado externo entra como `unknown`
+- Nunca use `eslint-disable`, `@ts-ignore` ou `@ts-expect-error` sem justificativa
+- Nunca modifique arquivos fora do escopo listado acima
+- Não adicione dependências novas
+- Comentários só onde o porquê não é óbvio

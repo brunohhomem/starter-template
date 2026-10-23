@@ -1,0 +1,223 @@
+PAPEL
+Você é o EXECUTOR de uma única tarefa. Não há histórico: tudo o que você precisa está neste prompt. Execute EXATAMENTE o que está pedido. Não decida, não melhore, não refatore fora do escopo. Se algo estiver impossível, contraditório ou faltando, PARE e reporte um BLOQUEIO (formato no fim). Quem decide é o gerente.
+
+TAREFA F3 T1 — Dependências, ambiente e transportes de e-mail
+Instalar as dependências de e-mail em apps/api, estender o schema de ambiente com as variáveis de e-mail (R1), criar a interface MailTransport e os três drivers (smtp, resend, memory), criar MailService com sendNow, e habilitar jsx: react-jsx no tsconfig da API.
+
+CONTEXTO
+
+## Referência R1 — Variáveis de ambiente (estender o schema existente)
+
+| Variável | Obrigatória | Padrão | Validação |
+|---|---|---|---|
+| MAIL_DRIVER | não | smtp | smtp ou resend ou memory |
+| MAIL_FROM | sim | Starter <no-reply@localhost> no .env.example | formato Nome <e-mail> ou e-mail |
+| APP_NAME | não | Starter Template | string 1–60 |
+| SMTP_HOST | não | localhost | string |
+| SMTP_PORT | não | 1025 | inteiro 1–65535 |
+| RESEND_API_KEY | só com driver resend | — | string não vazia; NÃO gerada por keys:generate |
+| EMAIL_CONFIRM_TTL_HOURS | não | 24 | inteiro 1–168 |
+| PASSWORD_RESET_TTL_MINUTES | não | 30 | inteiro 5–240 |
+| INVITE_TTL_DAYS | não | 7 | inteiro 1–30 |
+
+Regras herdadas: falha rápida listando TODOS os problemas sem imprimir valores; nenhum process.env fora de config/; .env.example ganha todas as chaves; ambiente de teste usa MAIL_DRIVER=memory. Redis do BullMQ usa REDIS_HOST, REDIS_PORT e a senha já existentes, com conexão própria (maxRetriesPerRequest: null).
+
+Decisões aplicáveis:
+- 3.2: drivers smtp (Mailpit em dev, via nodemailer), resend (produção, SDK resend) e memory (somente NODE_ENV=test). Interface única MailTransport
+- 3.3: NODE_ENV=production exige MAIL_DRIVER=resend e RESEND_API_KEY; qualquer outra combinação falha na subida
+- 3.6: Processo separado (worker.ts). A API só enfileira; nunca processa. O MailService.sendNow é a API de envio direto para a F7
+
+Estado atual dos arquivos relevantes:
+
+--- apps/api/src/config/env.schema.ts (arquivo completo) ---
+import { z } from '@starter/shared/zod';
+
+const logLevelSchema = z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']);
+const nodeEnvSchema = z.enum(['development', 'production', 'test']);
+
+const envSchema = z.object({
+  NODE_ENV: nodeEnvSchema.default('development'),
+  API_PORT: z.coerce.number().int().min(1).max(65535),
+  APP_ORIGIN: z.string().url(),
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0),
+  LOG_LEVEL: logLevelSchema.default('info'),
+  SWAGGER_ENABLED: z.coerce.boolean().default(false),
+  DB_HOST: z.string().min(1),
+  DB_PORT: z.coerce.number().int().min(1).max(65535),
+  DB_USER: z.string().min(1),
+  DB_PASSWORD: z.string().min(1),
+  DB_NAME: z.string().min(1),
+  DB_POOL_MAX: z.coerce.number().int().min(1).max(100).optional(),
+  TEST_DB_NAME: z.string().min(1).optional(),
+  REDIS_HOST: z.string().min(1),
+  REDIS_PORT: z.coerce.number().int().min(1).max(65535),
+  REDIS_PASSWORD: z.string().min(1),
+  JWT_ACCESS_SECRET: z.string().min(44),
+  JWT_REFRESH_SECRET: z.string().min(44),
+  COOKIE_SECRET: z.string().min(44),
+  ENCRYPTION_KEY: z.string().length(44),
+  BACKUP_ENCRYPTION_KEY: z.string().length(44),
+  // Auth (F2)
+  ADMIN_EMAIL: z.string().email(),
+  ADMIN_INITIAL_PASSWORD: z.string().optional(),
+  WEB_ORIGIN: z.string().url().default('http://localhost:3000'),
+  COOKIE_SECURE: z.coerce.boolean().optional(),
+  AUTH_ACCESS_TTL_MINUTES: z.coerce.number().int().min(1).max(120).default(15),
+  AUTH_REFRESH_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(7),
+  AUTH_REFRESH_REUSE_GRACE_SECONDS: z.coerce.number().int().min(0).max(60).default(10),
+  AUTH_BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
+});
+
+export type Env = z.infer<typeof envSchema>;
+import type { ZodIssue } from '@starter/shared/zod';
+
+export function validateEnv(rawEnv: Record<string, string | undefined>): Env {
+  const result = envSchema.safeParse(rawEnv);
+  if (!result.success) {
+    const issues = result.error.issues.map((issue: ZodIssue) => {
+      const path = issue.path.join('.');
+      return `  - ${path}: ${issue.message}`;
+    });
+    const message = ['Variáveis de ambiente inválidas ou ausentes:', ...issues].join('\n');
+    throw new Error(message);
+  }
+  const env = result.data;
+  if (env.NODE_ENV === 'production' && rawEnv.TRUST_PROXY_HOPS === undefined) {
+    throw new Error('Variáveis de ambiente inválidas ou ausentes:\n  - TRUST_PROXY_HOPS: obrigatório em produção');
+  }
+  if (env.COOKIE_SECURE === undefined) {
+    env.COOKIE_SECURE = env.NODE_ENV === 'production';
+  }
+  return env;
+}
+
+export function buildTestDbName(env: Env): string {
+  return env.TEST_DB_NAME ?? `${env.DB_NAME}_test`;
+}
+
+--- apps/api/tsconfig.json (arquivo completo) ---
+{
+  "extends": "@starter/config/tsconfig/node.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "isolatedModules": true,
+    "types": ["node", "jest"]
+  },
+  "include": ["src/**/*.ts"]
+}
+
+--- packages/config/tsconfig/node.json (base herdada) ---
+{
+  "extends": "./base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+
+--- apps/api/src/config/app-config.module.ts ---
+import { Global, Module } from '@nestjs/common';
+import { getEnv } from './load-env';
+
+export const ENV = Symbol('ENV');
+
+@Global()
+@Module({
+  providers: [
+    {
+      provide: ENV,
+      useFactory: (): Readonly<ReturnType<typeof getEnv>> => {
+        const env = getEnv();
+        return Object.freeze(env);
+      },
+    },
+  ],
+  exports: [ENV],
+})
+export class AppConfigModule {}
+
+--- .env.example (seção redis/auth já existente) ---
+REDIS_HOST=localhost
+REDIS_PORT=16379
+REDIS_PASSWORD=
+WEB_ORIGIN=http://localhost:3000
+AUTH_ACCESS_TTL_MINUTES=15
+AUTH_REFRESH_TTL_DAYS=7
+
+--- apps/api/src/modules/ (módulos existentes) ---
+auth/  settings/
+
+Padrão de módulo NestJS usado no projeto:
+- Provider com useFactory injetando ENV (Symbol) via @Inject(ENV)
+- Módulo exporta os serviços que outros módulos precisarão
+
+Leia também (somente leitura): AGENTS.md e docs/conventions/backend.md.
+
+ARQUIVOS
+Você pode criar ou alterar SOMENTE:
+- apps/api/src/config/env.schema.ts
+- apps/api/src/modules/mail/** (criar todo o módulo do zero)
+- apps/api/package.json
+- apps/api/tsconfig.json
+- apps/api/tsconfig.build.json (se existir)
+- pnpm-lock.yaml
+- .env.example
+Qualquer outro arquivo alterado reprova a tarefa.
+
+RESTRIÇÕES
+Fixas:
+1. Não faça commit, não faça push, não troque de branch. O gerente commita.
+2. Não instale programas na máquina nem dependências fora desta lista permitida: bullmq, nodemailer, @types/nodemailer, resend, react, react-dom, @types/react, @react-email/components, @react-email/render. Nada de winget/choco.
+3. Proibido: eslint-disable, @ts-ignore, any, console.log, .only/.skip em testes, process.env fora de config/.
+4. Segue o padrão do projeto: guard clauses; nomes legíveis; zod nas bordas.
+5. Nunca registre em log nem em resposta: senha, hash, token, segredo.
+6. Não apague nem reescreva testes existentes para fazê-los passar. Corrija o código.
+7. Não toque em .env nem imprima valores de variáveis de ambiente.
+
+Específicas da tarefa:
+- MAIL_DRIVER=memory só pode ser selecionado quando NODE_ENV=test; em qualquer outro ambiente, deve lançar erro
+- NODE_ENV=production exige MAIL_DRIVER=resend E RESEND_API_KEY não vazia; falha listando os problemas
+- MemoryTransport deve ter: lista sent (array de mensagens enviadas) e método clear()
+- ResendTransport deve usar o SDK resend; erro HTTP 4xx do Resend deve lançar um erro classificável como não recuperável (para o BullMQ — crie uma classe UnrecoverableMailError extends Error com propriedade unrecoverable = true, ou qualquer mecanismo claro)
+- MailService.sendNow(message) chama o transporte selecionado diretamente (sem fila); é a API usada pela F7
+- O MailModule deve exportar MailService para uso em outros módulos
+- Habilitar jsx: react-jsx no tsconfig da API (necessário para os templates React Email da T5)
+- Os templates .tsx estarão em apps/api/src/modules/mail/templates/ — o tsconfig.json precisa incluir src/**/*.tsx também
+- T1 NÃO implementa a fila BullMQ (isso é T6). Instale bullmq aqui mas não crie filas.
+- MAIL_FROM pode ter default 'Starter <no-reply@localhost>' no schema
+
+ACEITE
+Ao terminar, rode e cole o resultado (últimas 30 linhas) de:
+1. pnpm --filter @starter/api lint
+2. pnpm --filter @starter/api typecheck
+
+Comportamentos que precisam estar provados por teste (testes unitários com Jest da API, em apps/api/src/modules/mail/):
+- seleção correta do driver (smtp → SmtpTransport, resend → ResendTransport, memory → MemoryTransport)
+- memory driver fora de test (NODE_ENV=development) lança erro
+- produção sem RESEND_API_KEY ou sem MAIL_DRIVER=resend falha listando o problema sem imprimir valores
+- MemoryTransport.send() acumula mensagem em sent; clear() esvazia
+- ResendTransport com SDK mockado: erro 4xx vira erro não recuperável classificável
+
+QUANDO ALGO NÃO BATER
+Não improvise. Pare e responda SOMENTE com:
+BLOQUEIO
+- O que eu tentava:
+- O que encontrei (comando e saída, ou arquivo e trecho):
+- Por que não consigo seguir sem uma decisão:
+- Opções que vejo (A/B) e a que eu escolheria:
+
+RESPOSTA FINAL (quando concluir)
+CONCLUÍDO
+- Arquivos criados/alterados:
+- Comandos de aceite e resultado:
+- Dúvidas ou pontos de atenção (se houver):

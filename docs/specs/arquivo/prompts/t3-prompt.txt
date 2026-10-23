@@ -1,0 +1,231 @@
+Você é o executor de uma tarefa num monorepo pnpm. Leia tudo antes de escrever qualquer código.
+
+## Contexto do projeto
+
+Monorepo pnpm. API em `apps/api` com NestJS + Drizzle ORM + PostgreSQL.
+- `pnpm db:generate <nome>` — gera migration SQL a partir do schema
+- `pnpm db:migrate` — aplica migrations pendentes
+- `pnpm --filter @starter/api typecheck` — typecheck da API
+
+## Tarefa T3 — Entities e migrations
+
+### Padrão do projeto (NÃO desvie)
+
+**coreColumns** (de `apps/api/src/database/columns/core-columns.ts`):
+```typescript
+export const coreColumns = {
+  id: uuid('id').primaryKey().default(sql`uuidv7()`),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+};
+```
+
+**Exemplo de entity** (`apps/api/src/modules/auth/session.entity.ts`):
+```typescript
+import { pgTable, text, timestamp, uuid, uniqueIndex, index, foreignKey } from 'drizzle-orm/pg-core';
+import { coreColumns } from '../../database/columns/core-columns';
+import { users } from './user.entity';
+
+export const sessions = pgTable('sessions', {
+  ...coreColumns,
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  // ...outras colunas
+}, (table) => ({
+  userIdIdx: index('sessions_user_id_idx').on(table.userId),
+}));
+
+export type Session = typeof sessions.$inferSelect;
+export type NewSession = typeof sessions.$inferInsert;
+```
+
+**Schema central** (`apps/api/src/database/schema.ts`):
+```typescript
+// Cada entity é exportada aqui:
+export { users, userRoleEnum } from '../modules/auth/user.entity';
+export type { User, NewUser } from '../modules/auth/user.entity';
+export { sessions } from '../modules/auth/session.entity';
+export type { Session, NewSession } from '../modules/auth/session.entity';
+// etc.
+```
+
+**Journal atual** (`apps/api/src/database/migrations/meta/_journal.json`):
+- idx 0: `0000_create_system_settings`
+- idx 1: `0001_create_users`
+
+A próxima migration será `0002_create_email_tokens` e a seguinte `0003_create_audit_logs`.
+
+### Especificação das tabelas (Referência R2)
+
+**Enum** `email_token_type`: `'email_confirmation' | 'password_reset' | 'invite'`
+
+**`email_tokens`** (usa `coreColumns`):
+| Coluna | Tipo Drizzle | Regras |
+|---|---|---|
+| `user_id` | `uuid('user_id')` | FK `users.id` on delete cascade, not null, índice |
+| `type` | `emailTokenTypeEnum('type')` | not null |
+| `token_hash` | `text('token_hash')` | not null, unique (índice único) |
+| `expires_at` | `timestamp('expires_at', { withTimezone: true })` | not null, índice |
+| `used_at` | `timestamp('used_at', { withTimezone: true })` | null (sem `.notNull()`) |
+
+**`audit_logs`** (usa `coreColumns`):
+| Coluna | Tipo Drizzle | Regras |
+|---|---|---|
+| `actor_user_id` | `uuid('actor_user_id')` | FK `users.id` on delete set null, null, índice |
+| `action` | `text('action')` | not null, índice |
+| `target_type` | `text('target_type')` | null |
+| `target_id` | `text('target_id')` | null |
+| `metadata` | `jsonb('metadata')` | not null, default `{}` |
+| `ip` | `text('ip')` | null |
+
+### O que implementar
+
+#### 1. Criar `apps/api/src/modules/email-tokens/email-token.entity.ts`
+
+```typescript
+import { pgEnum, pgTable, text, timestamp, uuid, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import { coreColumns } from '../../database/columns/core-columns';
+import { users } from '../auth/user.entity';
+
+export const emailTokenTypeEnum = pgEnum('email_token_type', [
+  'email_confirmation',
+  'password_reset',
+  'invite',
+]);
+
+export const emailTokens = pgTable(
+  'email_tokens',
+  {
+    ...coreColumns,
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    type: emailTokenTypeEnum('type').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+  },
+  (table) => ({
+    tokenHashIdx: uniqueIndex('email_tokens_token_hash_idx').on(table.tokenHash),
+    userIdIdx: index('email_tokens_user_id_idx').on(table.userId),
+    expiresAtIdx: index('email_tokens_expires_at_idx').on(table.expiresAt),
+  }),
+);
+
+export type EmailToken = typeof emailTokens.$inferSelect;
+export type NewEmailToken = typeof emailTokens.$inferInsert;
+```
+
+#### 2. Criar `apps/api/src/modules/audit/audit-log.entity.ts`
+
+```typescript
+import { pgTable, text, uuid, jsonb, index } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { coreColumns } from '../../database/columns/core-columns';
+import { users } from '../auth/user.entity';
+
+export const auditLogs = pgTable(
+  'audit_logs',
+  {
+    ...coreColumns,
+    actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
+    action: text('action').notNull(),
+    targetType: text('target_type'),
+    targetId: text('target_id'),
+    metadata: jsonb('metadata').notNull().default(sql`'{}'::jsonb`),
+    ip: text('ip'),
+  },
+  (table) => ({
+    actorUserIdIdx: index('audit_logs_actor_user_id_idx').on(table.actorUserId),
+    actionIdx: index('audit_logs_action_idx').on(table.action),
+  }),
+);
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type NewAuditLog = typeof auditLogs.$inferInsert;
+```
+
+#### 3. Exportar as entities no schema central `apps/api/src/database/schema.ts`
+
+Acrescentar ao final do arquivo existente:
+
+```typescript
+export { emailTokens, emailTokenTypeEnum } from '../modules/email-tokens/email-token.entity';
+export type { EmailToken, NewEmailToken } from '../modules/email-tokens/email-token.entity';
+
+export { auditLogs } from '../modules/audit/audit-log.entity';
+export type { AuditLog, NewAuditLog } from '../modules/audit/audit-log.entity';
+```
+
+#### 4. Gerar as migrations
+
+Execute na raiz do projeto:
+```
+pnpm db:generate create_email_tokens
+pnpm db:generate create_audit_logs
+```
+
+Isso vai criar:
+- `apps/api/src/database/migrations/0002_create_email_tokens.sql`
+- `apps/api/src/database/migrations/0003_create_audit_logs.sql`
+- E atualizar os snapshots e journal correspondentes.
+
+**IMPORTANTE:** Após gerar as migrations, leia os arquivos SQL gerados e confirme que o padrão está correto. O Drizzle Kit usa `-->statement-breakpoint` para separar statements — NÃO adicione `BEGIN`/`COMMIT` manualmente, pois o Drizzle aplica cada migration dentro de uma transação automaticamente. Apenas confirme que o SQL gerado corresponde às entities definidas.
+
+#### 5. Verificar typecheck
+
+```
+pnpm typecheck
+```
+
+### Escopo de arquivos
+
+Você só pode criar/alterar:
+- `apps/api/src/modules/email-tokens/email-token.entity.ts` (novo)
+- `apps/api/src/modules/audit/audit-log.entity.ts` (novo)
+- `apps/api/src/database/schema.ts`
+- `apps/api/src/database/migrations/0002_create_email_tokens.sql` (gerado)
+- `apps/api/src/database/migrations/0003_create_audit_logs.sql` (gerado)
+- `apps/api/src/database/migrations/meta/0002_snapshot.json` (gerado)
+- `apps/api/src/database/migrations/meta/0003_snapshot.json` (gerado)
+- `apps/api/src/database/migrations/meta/_journal.json` (atualizado pelo generate)
+
+Nenhum outro arquivo.
+
+### Critérios de aceite
+
+1. `pnpm typecheck` passa sem erros
+2. As migrations SQL existem em `apps/api/src/database/migrations/`
+3. Os arquivos de entity e schema compilam sem erro
+
+### Prova de atomicidade
+
+O Drizzle Kit aplica cada migration dentro de uma transação de banco automaticamente. Após gerar as migrations, leia os arquivos SQL gerados e confirme que o conteúdo corresponde às entities (tabelas, tipos, índices, FKs corretos). Documente no output final que o SQL gerado está correto e que a atomicidade é garantida pelo Drizzle Kit.
+
+### Commit
+
+Após todos os critérios passarem:
+```
+feat(api): add email_tokens and audit_logs tables
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+```
+
+Inclua no commit os arquivos:
+- `apps/api/src/modules/email-tokens/email-token.entity.ts`
+- `apps/api/src/modules/audit/audit-log.entity.ts`
+- `apps/api/src/database/schema.ts`
+- `apps/api/src/database/migrations/0002_create_email_tokens.sql`
+- `apps/api/src/database/migrations/0003_create_audit_logs.sql`
+- `apps/api/src/database/migrations/meta/0002_snapshot.json`
+- `apps/api/src/database/migrations/meta/0003_snapshot.json`
+- `apps/api/src/database/migrations/meta/_journal.json`
+
+### Regras inegociáveis
+
+- Nunca use `any` sem justificativa
+- Nunca use `eslint-disable`, `@ts-ignore` ou `@ts-expect-error` sem justificativa
+- Não instale dependências novas
+- Não modifique arquivos fora do escopo listado
+- NÃO execute `pnpm db:migrate` — apenas gere as migrations com `db:generate`
+- NÃO execute testes de integração — eles precisam de banco em execução
