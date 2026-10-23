@@ -38,6 +38,15 @@ const validParsedEnv: Env = {
   AUTH_REFRESH_TTL_DAYS: 7,
   AUTH_REFRESH_REUSE_GRACE_SECONDS: 10,
   AUTH_BCRYPT_ROUNDS: 12,
+  MAIL_DRIVER: 'smtp',
+  MAIL_FROM: 'Starter <no-reply@localhost>',
+  APP_NAME: 'Starter Template',
+  SMTP_HOST: 'localhost',
+  SMTP_PORT: 1025,
+  RESEND_API_KEY: '',
+  EMAIL_CONFIRM_TTL_HOURS: 24,
+  PASSWORD_RESET_TTL_MINUTES: 30,
+  INVITE_TTL_DAYS: 7,
 };
 
 describe('logger-options', () => {
