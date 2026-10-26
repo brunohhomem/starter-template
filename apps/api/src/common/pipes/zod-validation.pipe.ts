@@ -1,4 +1,4 @@
-import { Injectable, PipeTransform, ArgumentMetadata } from '@nestjs/common';
+import { Injectable, Optional, PipeTransform, ArgumentMetadata } from '@nestjs/common';
 import type { ZodSchema } from 'zod';
 import { ZodError } from 'zod';
 import { ZodValidationException } from 'nestjs-zod';
@@ -12,7 +12,9 @@ import { ZodValidationException } from 'nestjs-zod';
  */
 @Injectable()
 export class ZodValidationPipe implements PipeTransform {
-  constructor(private readonly schema?: ZodSchema) {}
+  // O pipe global (APP_PIPE) não recebe schema. Sem @Optional(), o metadata do
+  // construtor faz o Nest tentar injetar o tipo apagado e o start:dev não sobe.
+  constructor(@Optional() private readonly schema?: ZodSchema) {}
 
   transform(value: unknown, metadata: ArgumentMetadata): unknown {
     const schema = this.schema ?? (metadata.metatype as ZodSchema | undefined);
