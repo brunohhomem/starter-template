@@ -10,6 +10,8 @@ import { RedisModule } from './redis/redis.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MailModule } from './modules/mail/mail.module';
+import { PeopleModule } from './modules/people/people.module';
+import { UsersModule } from './modules/users/users.module';
 import { ZodValidationPipe } from './common/pipes/zod-validation.pipe';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ZodSerializerInterceptor } from 'nestjs-zod';
@@ -32,6 +34,8 @@ import Redis from 'ioredis';
     HealthModule,
     AuthModule,
     MailModule,
+    PeopleModule,
+    UsersModule,
     ThrottlerModule.forRootAsync({
       imports: [RedisModule.forRoot()],
       inject: [REDIS],

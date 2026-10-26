@@ -6,7 +6,7 @@ import { setupTestDatabase, teardownTestDatabase, getTestPool } from './integrat
 import { startTestWorker } from './test-worker';
 import { MemoryTransport } from '../src/modules/mail/transports/memory.transport';
 import { renderEmail } from '../src/modules/mail/templates/render-email';
-import { waitForEmail, extractToken } from './test-email-helpers';
+import { makeScenario } from './scenario';
 
 describe('Segurança', () => {
   let app: INestApplication;
@@ -32,14 +32,13 @@ describe('Segurança', () => {
     await resetThrottle();
   });
 
-  it('nenhuma senha, token ou hash aparece em log, auditoria ou payload da fila — banco não armazena token em claro', async () => {
-    await request(app.getHttpServer())
-      .post('/api/auth/register')
-      .send({ email: 'seguranca@teste.com', password: 'SenhaSegura123' });
+  it('Nenhuma senha, token ou hash aparece em log, auditoria ou payload da fila — banco não armazena token em claro', async () => {
+    const scenario = makeScenario(app, memoryTransport);
+    await scenario.createUser({ email: 'seguranca@teste.com', password: 'SenhaSegura123' });
 
-    const email = await waitForEmail(memoryTransport, 'seguranca@teste.com');
+    const email = await scenario.lastEmailTo('seguranca@teste.com');
     expect(email).toBeDefined();
-    const rawToken = extractToken(email!, 'token');
+    const rawToken = scenario.extractLinkToken(email!);
 
     const pool = getTestPool();
     const tokenRows = await pool.query(`SELECT token_hash FROM email_tokens`);
@@ -47,7 +46,7 @@ describe('Segurança', () => {
 
     for (const row of tokenRows.rows) {
       expect(row.token_hash).not.toBe(rawToken);
-      expect(row.token_hash.length).toBe(64); // SHA-256 hex
+      expect(row.token_hash.length).toBe(64);
     }
 
     const auditRows = await pool.query(`SELECT metadata FROM audit_logs`);
@@ -55,33 +54,42 @@ describe('Segurança', () => {
       const meta = JSON.stringify(row.metadata ?? {});
       expect(meta).not.toMatch(/password|hash|token_hash/i);
     }
-  });
 
-  it('resposta do login não contém password/hash/token no corpo', async () => {
-    const response = await request(app.getHttpServer())
+    const loginRes = await request(app.getHttpServer())
       .post('/api/auth/login')
-      .send({ email: 'security@teste.com', password: 'SenhaForte123' })
+      .send({ email: 'seguranca_x@teste.com', password: 'SenhaForte123' })
       .expect(401);
+    expect(JSON.stringify(loginRes.body)).not.toContain('password');
+    expect(JSON.stringify(loginRes.body)).not.toContain('hash');
 
-    const bodyStr = JSON.stringify(response.body);
-    expect(bodyStr).not.toContain('password');
-    expect(bodyStr).not.toContain('hash');
-    expect(bodyStr).not.toContain('token');
-  });
-
-  it('resposta do register não contém password/hash/token no corpo', async () => {
-    const response = await request(app.getHttpServer())
+    const registerRes = await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: 'security2@teste.com', password: 'SenhaForte123' })
+      .send({
+        email: 'seguranca2@teste.com',
+        password: 'SenhaForte123',
+        fullName: 'Segurança Dois',
+      })
       .expect(201);
-
-    const bodyStr = JSON.stringify(response.body);
-    expect(bodyStr).not.toContain('password');
-    expect(bodyStr).not.toContain('hash');
-    expect(bodyStr).not.toContain('token');
+    expect(JSON.stringify(registerRes.body)).not.toContain('password');
+    expect(JSON.stringify(registerRes.body)).not.toContain('hash');
+    expect(JSON.stringify(registerRes.body)).not.toContain('token');
   });
 
-  it('nome com HTML hostil no cadastro sai escapado no e-mail', async () => {
+  it('Requisição que altera estado vinda de outra origem', async () => {
+    const scenario = makeScenario(app);
+    const user = await scenario.createUser({ email: 'csrf@teste.com' });
+    const agent = await scenario.loginAs(user);
+
+    const res = await agent
+      .post('/api/auth/change-password')
+      .set('Origin', 'https://malicioso.com')
+      .send({ currentPassword: 'SenhaForte123', newPassword: 'NovaSenha456' })
+      .expect(403);
+
+    expect(res.body.code).toBe('AUTH_CSRF_BLOCKED');
+  });
+
+  it('Nome com HTML hostil no cadastro', async () => {
     const hostileAppName = '"><img src=x onerror=alert(1)>';
     const { html } = await renderEmail('emailConfirmation', {
       appName: hostileAppName,

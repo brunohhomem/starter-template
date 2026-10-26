@@ -18,9 +18,10 @@ import { CookieService } from './cookie.service';
 import { SettingsModule } from '../settings/settings.module';
 import { EmailTokensModule } from '../email-tokens/email-tokens.module';
 import { AuditModule } from '../audit/audit.module';
+import { PeopleModule } from '../people/people.module';
 
 @Module({
-  imports: [SettingsModule, EmailTokensModule, AuditModule, JwtModule.register({})],
+  imports: [SettingsModule, EmailTokensModule, AuditModule, PeopleModule, JwtModule.register({})],
   controllers: [
     AuthController,
     PasswordController,

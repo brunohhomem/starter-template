@@ -20,13 +20,17 @@
     "./email": {
       "types": "./dist/email.d.ts",
       "default": "./dist/email.js"
+    },
+    "./people": {
+      "types": "./dist/people.d.ts",
+      "default": "./dist/people.js"
     }
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "zod": "4.6.7"

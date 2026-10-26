@@ -9,6 +9,8 @@ import { SettingsModule } from '../src/modules/settings/settings.module';
 import { AppConfigModule } from '../src/config/app-config.module';
 import { AuthModule } from '../src/modules/auth/auth.module';
 import { MailModule } from '../src/modules/mail/mail.module';
+import { PeopleModule } from '../src/modules/people/people.module';
+import { UsersModule } from '../src/modules/users/users.module';
 import { TestThrottlerController } from './test-throttler.controller';
 import { ZodValidationPipe } from '../src/common/pipes/zod-validation.pipe';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
@@ -31,6 +33,8 @@ import Redis from 'ioredis';
     HealthModule,
     AuthModule,
     MailModule,
+    PeopleModule,
+    UsersModule,
     ThrottlerModule.forRootAsync({
       imports: [RedisModule.forRoot()],
       inject: [REDIS],

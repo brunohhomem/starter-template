@@ -17,12 +17,6 @@ type UserCredentials = {
   password: string;
 };
 
-type LoginResult = {
-  accessCookie: string;
-  refreshCookie: string;
-  userId: string;
-};
-
 type SentEmail = {
   to: string;
   subject: string;
@@ -30,12 +24,14 @@ type SentEmail = {
   html?: string;
 };
 
+type AuthAgent = Pick<request.SuperAgentTest, 'get' | 'post' | 'patch' | 'delete' | 'put'>;
+
 export function makeScenario(app: INestApplication, transport?: MemoryTransport) {
   async function createUser(opts: CreateUserOpts): Promise<UserCredentials> {
     const password = opts.password ?? 'SenhaForte123';
     await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: opts.email, password })
+      .send({ email: opts.email, password, fullName: 'Usuário Teste' })
       .expect(201);
 
     const pool = getTestPool();
@@ -51,21 +47,23 @@ export function makeScenario(app: INestApplication, transport?: MemoryTransport)
     return { email: opts.email, password };
   }
 
-  async function loginAs(user: UserCredentials): Promise<LoginResult> {
-    const res = await request(app.getHttpServer())
+  async function loginAs(user: UserCredentials): Promise<AuthAgent> {
+    const loginRes = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ email: user.email, password: user.password })
       .expect(200);
 
-    const cookies = res.headers['set-cookie'] as string[];
-    const accessCookie = cookies
-      .find((cookie) => cookie.startsWith('access_token='))!
-      .split(';')[0];
-    const refreshCookie = cookies
-      .find((cookie) => cookie.startsWith('refresh_token='))!
-      .split(';')[0];
+    const setCookieHeader = (loginRes.headers['set-cookie'] ?? []) as string[];
+    const cookieStr = setCookieHeader.map((cookie: string) => cookie.split(';')[0]).join('; ');
 
-    return { accessCookie, refreshCookie, userId: res.body.user.id as string };
+    const server = app.getHttpServer();
+    return {
+      get: (url: string) => request(server).get(url).set('Cookie', cookieStr),
+      post: (url: string) => request(server).post(url).set('Cookie', cookieStr),
+      patch: (url: string) => request(server).patch(url).set('Cookie', cookieStr),
+      delete: (url: string) => request(server).delete(url).set('Cookie', cookieStr),
+      put: (url: string) => request(server).put(url).set('Cookie', cookieStr),
+    };
   }
 
   async function lastEmailTo(email: string, maxWaitMs = 3000): Promise<SentEmail | undefined> {
@@ -86,5 +84,12 @@ export function makeScenario(app: INestApplication, transport?: MemoryTransport)
     return match[1];
   }
 
-  return { createUser, loginAs, lastEmailTo, extractLinkToken };
+  function cookieFrom(headers: Record<string, string | string[]>, name: string): string {
+    const setCookie = (headers['set-cookie'] ?? []) as string[];
+    const entry = setCookie.find((cookie) => cookie.startsWith(name + '='));
+    if (!entry) throw new Error(`cookie '${name}' not found in response`);
+    return entry.split(';')[0];
+  }
+
+  return { createUser, loginAs, lastEmailTo, extractLinkToken, cookieFrom };
 }
