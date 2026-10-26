@@ -41,7 +41,7 @@ describe('Configurações', () => {
 
     const res = await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: 'visitante@teste.com', password: 'SenhaForte123' })
+      .send({ email: 'visitante@teste.com', password: 'SenhaForte123', fullName: 'Visitante' })
       .expect(403);
 
     expect(res.body.code).toBe('AUTH_REGISTRATION_DISABLED');

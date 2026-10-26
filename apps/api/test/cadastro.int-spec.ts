@@ -36,7 +36,7 @@ describe('Cadastro', () => {
 
     const res = await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: 'novo@teste.com', password: 'SenhaForte123' })
+      .send({ email: 'novo@teste.com', password: 'SenhaForte123', fullName: 'João Silva' })
       .expect(201);
 
     expect(res.body).toMatchObject({
@@ -68,12 +68,12 @@ describe('Cadastro', () => {
   it('Visitante se cadastra com e-mail inválido — 400, erro no campo email', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: 'nao-e-um-email', password: 'SenhaForte123' })
+      .send({ email: 'nao-e-um-email', password: 'SenhaForte123', fullName: 'João Silva' })
       .expect(400);
 
     expect(Array.isArray(res.body.details)).toBe(true);
-    const details = res.body.details as Array<{ field?: string; path?: string }>;
-    expect(details.some((detail) => (detail.field ?? detail.path) === 'email')).toBe(true);
+    const details = res.body.details as Array<{ path: (string | number)[]; message: string }>;
+    expect(details.some((detail) => detail.path[0] === 'email')).toBe(true);
   });
 
   it('Visitante se cadastra com senha fora da política (curta, só letras, só números)', async () => {
@@ -86,7 +86,7 @@ describe('Cadastro', () => {
     for (const { password } of cases) {
       const res = await request(app.getHttpServer())
         .post('/api/auth/register')
-        .send({ email: 'politica@teste.com', password })
+        .send({ email: 'politica@teste.com', password, fullName: 'João Silva' })
         .expect(400);
 
       expect(Array.isArray(res.body.details)).toBe(true);
@@ -97,12 +97,12 @@ describe('Cadastro', () => {
   it('Visitante se cadastra com e-mail já cadastrado', async () => {
     await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: 'dup@teste.com', password: 'SenhaForte123' })
+      .send({ email: 'dup@teste.com', password: 'SenhaForte123', fullName: 'João Silva' })
       .expect(201);
 
     const res = await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: 'dup@teste.com', password: 'OutraSenha123' })
+      .send({ email: 'dup@teste.com', password: 'OutraSenha123', fullName: 'João Silva' })
       .expect(409);
 
     expect(res.body.code).toBe('AUTH_EMAIL_TAKEN');
@@ -117,7 +117,7 @@ describe('Cadastro', () => {
 
     const res = await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: 'desativado@teste.com', password: 'SenhaForte123' })
+      .send({ email: 'desativado@teste.com', password: 'SenhaForte123', fullName: 'João Silva' })
       .expect(403);
 
     expect(res.body.code).toBe('AUTH_REGISTRATION_DISABLED');
@@ -126,9 +126,54 @@ describe('Cadastro', () => {
   it('Visitante envia role: admin no cadastro', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: 'role@teste.com', password: 'SenhaForte123', role: 'admin' })
+      .send({
+        email: 'role@teste.com',
+        password: 'SenhaForte123',
+        fullName: 'João Silva',
+        role: 'admin',
+      })
       .expect(201);
 
     expect(res.body.user.role).toBe('user');
+  });
+
+  it('Visitante se cadastra com CPF inválido — 400, erro no campo cpf', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/auth/register')
+      .send({
+        email: 'cpfinvalido@teste.com',
+        password: 'SenhaForte123',
+        fullName: 'João Silva',
+        cpf: '000.000.000-00',
+      })
+      .expect(400);
+
+    expect(Array.isArray(res.body.details)).toBe(true);
+    const details = res.body.details as Array<{ path: (string | number)[]; message: string }>;
+    expect(details.some((detail) => detail.path[0] === 'cpf')).toBe(true);
+  });
+
+  it('Visitante se cadastra com CPF já usado — 409', async () => {
+    await request(app.getHttpServer())
+      .post('/api/auth/register')
+      .send({
+        email: 'primeiro@teste.com',
+        password: 'SenhaForte123',
+        fullName: 'João Silva',
+        cpf: '529.982.247-25',
+      })
+      .expect(201);
+
+    const res = await request(app.getHttpServer())
+      .post('/api/auth/register')
+      .send({
+        email: 'segundo@teste.com',
+        password: 'SenhaForte123',
+        fullName: 'Maria Silva',
+        cpf: '529.982.247-25',
+      })
+      .expect(409);
+
+    expect(res.body.code).toBe('PEOPLE_CPF_TAKEN');
   });
 });

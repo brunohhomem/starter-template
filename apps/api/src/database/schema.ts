@@ -18,3 +18,6 @@ export type { EmailToken, NewEmailToken } from '../modules/email-tokens/email-to
 
 export { auditLogs } from '../modules/audit/audit-log.entity';
 export type { AuditLog, NewAuditLog } from '../modules/audit/audit-log.entity';
+
+export { people } from '../modules/people/person.entity';
+export type { Person, NewPerson } from '../modules/people/person.entity';

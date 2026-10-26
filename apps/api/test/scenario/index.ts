@@ -24,12 +24,14 @@ type SentEmail = {
   html?: string;
 };
 
+type AuthAgent = Pick<request.SuperAgentTest, 'get' | 'post' | 'patch' | 'delete' | 'put'>;
+
 export function makeScenario(app: INestApplication, transport?: MemoryTransport) {
   async function createUser(opts: CreateUserOpts): Promise<UserCredentials> {
     const password = opts.password ?? 'SenhaForte123';
     await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: opts.email, password })
+      .send({ email: opts.email, password, fullName: 'Usuário Teste' })
       .expect(201);
 
     const pool = getTestPool();
@@ -45,13 +47,23 @@ export function makeScenario(app: INestApplication, transport?: MemoryTransport)
     return { email: opts.email, password };
   }
 
-  async function loginAs(user: UserCredentials): Promise<request.SuperAgentTest> {
-    const agent = request.agent(app.getHttpServer());
-    await agent
+  async function loginAs(user: UserCredentials): Promise<AuthAgent> {
+    const loginRes = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ email: user.email, password: user.password })
       .expect(200);
-    return agent;
+
+    const setCookieHeader = (loginRes.headers['set-cookie'] ?? []) as string[];
+    const cookieStr = setCookieHeader.map((cookie: string) => cookie.split(';')[0]).join('; ');
+
+    const server = app.getHttpServer();
+    return {
+      get: (url: string) => request(server).get(url).set('Cookie', cookieStr),
+      post: (url: string) => request(server).post(url).set('Cookie', cookieStr),
+      patch: (url: string) => request(server).patch(url).set('Cookie', cookieStr),
+      delete: (url: string) => request(server).delete(url).set('Cookie', cookieStr),
+      put: (url: string) => request(server).put(url).set('Cookie', cookieStr),
+    };
   }
 
   async function lastEmailTo(email: string, maxWaitMs = 3000): Promise<SentEmail | undefined> {

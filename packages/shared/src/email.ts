@@ -1,5 +1,11 @@
 import { z } from './zod';
-import { emailSchema, passwordSchema } from './auth/schemas';
+import {
+  emailSchema,
+  passwordSchema,
+  fullNameSchema,
+  cpfSchema,
+  phoneSchema,
+} from './auth/schemas';
 import { paginationQuerySchema, paginatedResponseSchema } from './pagination';
 import { USER_ROLES } from './auth/schemas';
 
@@ -35,6 +41,9 @@ export const invitationResponseSchema = z.object({
 export const acceptInvitationRequestSchema = z.object({
   token: tokenSchema,
   password: passwordSchema,
+  fullName: fullNameSchema,
+  cpf: cpfSchema.optional(),
+  phone: phoneSchema.optional(),
 });
 
 // Settings
@@ -54,6 +63,8 @@ export const AUDIT_ACTIONS = {
   AUTH_EMAIL_CONFIRMED: 'auth.email_confirmed',
   AUTH_INVITATION_SENT: 'auth.invitation_sent',
   AUTH_INVITATION_ACCEPTED: 'auth.invitation_accepted',
+  USERS_ROLE_CHANGED: 'users.role_changed',
+  USERS_STATUS_CHANGED: 'users.status_changed',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

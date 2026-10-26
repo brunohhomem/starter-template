@@ -3,6 +3,7 @@ import { buildDatabaseConfig } from '../database-config';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { users, userRoleEnum } from '../../modules/auth/user.entity';
+import { people } from '../../modules/people/person.entity';
 import { systemSettings } from '../../modules/settings/system-setting.entity';
 import { eq } from 'drizzle-orm';
 import { PasswordHasher } from '../../modules/auth/password-hasher';
@@ -62,14 +63,26 @@ export async function seedAdmin(db: NodePgDatabase): Promise<AdminSeedResult> {
 
     // 3. Criar admin em transação
     await db.transaction(async (tx) => {
-      await tx.insert(users).values({
-        email: adminEmail,
-        passwordHash,
-        role: 'admin',
-        isActive: true,
-        mustChangePassword: !isDevelopment,
-        emailVerifiedAt: new Date(),
-      });
+      const [newAdmin] = await tx
+        .insert(users)
+        .values({
+          email: adminEmail,
+          passwordHash,
+          role: 'admin',
+          isActive: true,
+          mustChangePassword: !isDevelopment,
+          emailVerifiedAt: new Date(),
+        })
+        .returning({ id: users.id });
+
+      if (newAdmin) {
+        await tx.insert(people).values({
+          userId: newAdmin.id,
+          fullName: 'Administrador',
+          cpf: null,
+          phone: null,
+        });
+      }
 
       // 4. Inserir registration_enabled somente se não existir
       const existingSetting = await tx

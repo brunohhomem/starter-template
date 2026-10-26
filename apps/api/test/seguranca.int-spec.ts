@@ -64,7 +64,11 @@ describe('Segurança', () => {
 
     const registerRes = await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: 'seguranca2@teste.com', password: 'SenhaForte123' })
+      .send({
+        email: 'seguranca2@teste.com',
+        password: 'SenhaForte123',
+        fullName: 'Segurança Dois',
+      })
       .expect(201);
     expect(JSON.stringify(registerRes.body)).not.toContain('password');
     expect(JSON.stringify(registerRes.body)).not.toContain('hash');

@@ -17,6 +17,7 @@ import { PasswordHasher } from './password-hasher';
 import { SessionsRepository } from './sessions.repository';
 import { TokenService } from './token.service';
 import { UsersRepository } from './users.repository';
+import { PeopleRepository } from '../people/people.repository';
 import type { AuthUserResponse } from './auth-types';
 
 @Injectable()
@@ -30,6 +31,7 @@ export class AuthService {
     private readonly systemSettingsRepository: SystemSettingsRepository,
     private readonly emailTokensService: EmailTokensService,
     private readonly mailQueueService: MailQueueService,
+    private readonly peopleRepository: PeopleRepository,
     @Inject(DATABASE) private readonly db: Database,
   ) {}
 
@@ -37,7 +39,14 @@ export class AuthService {
     return this.db.transaction(fn);
   }
 
-  async register(email: string, password: string, res: Response): Promise<AuthUserResponse> {
+  async register(
+    email: string,
+    password: string,
+    fullName: string,
+    cpf: string | undefined,
+    phone: string | undefined,
+    res: Response,
+  ): Promise<AuthUserResponse> {
     const normalizedEmail = email.toLowerCase();
 
     const setting = await this.systemSettingsRepository.findByKey('registration_enabled');
@@ -66,6 +75,21 @@ export class AuthService {
       });
     }
 
+    if (cpf) {
+      const cpfTaken = await this.peopleRepository.findByCpf(cpf);
+      if (cpfTaken) {
+        throw new ConflictException({
+          statusCode: 409,
+          error: 'Conflict',
+          message: 'CPF já cadastrado',
+          code: 'PEOPLE_CPF_TAKEN',
+          requestId: '',
+          path: '/api/auth/register',
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+
     const passwordHash = await this.passwordHasher.hash(password);
 
     const result = await this.withTransaction(async (tx) => {
@@ -77,6 +101,11 @@ export class AuthService {
           isActive: true,
           mustChangePassword: false,
         },
+        tx,
+      );
+
+      await this.peopleRepository.create(
+        { userId: user.id, fullName, cpf: cpf ?? null, phone: phone ?? null },
         tx,
       );
 

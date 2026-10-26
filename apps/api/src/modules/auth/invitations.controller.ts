@@ -85,10 +85,18 @@ export class InvitationsController {
   })
   async acceptInvitation(
     @Body(new ZodValidationPipe(acceptInvitationRequestSchema))
-    body: { token: string; password: string },
+    body: { token: string; password: string; fullName: string; cpf?: string; phone?: string },
     @Res({ passthrough: true }) res: Response,
     @Ip() ip: string,
   ) {
-    return this.invitationsService.acceptInvitation(body.token, body.password, res, ip);
+    return this.invitationsService.acceptInvitation(
+      body.token,
+      body.password,
+      body.fullName,
+      body.cpf,
+      body.phone,
+      res,
+      ip,
+    );
   }
 }

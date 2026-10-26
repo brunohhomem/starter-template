@@ -18,11 +18,6 @@ let testPool: Pool | null = null;
 let testDb: ReturnType<typeof drizzle<typeof schema>> | null = null;
 
 export async function setupTestDatabase(): Promise<void> {
-  // Se já inicializado, não faz nada
-  if (testPool) {
-    return;
-  }
-
   const env = getEnv();
   const testDbName = env.TEST_DB_NAME ?? `${env.DB_NAME}_test`;
 
@@ -31,6 +26,11 @@ export async function setupTestDatabase(): Promise<void> {
     throw new Error(
       `TEST_DB_NAME ("${testDbName}") deve terminar em "_test" para evitar acidentes.`,
     );
+  }
+
+  // Se já inicializado, não faz nada
+  if (testPool) {
+    return;
   }
 
   // Conecta ao banco de manutenção (postgres) para criar o banco de teste se não existir

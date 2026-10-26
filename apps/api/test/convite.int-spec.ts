@@ -61,7 +61,7 @@ describe('Convite', () => {
 
     const acceptRes = await request(app.getHttpServer())
       .post('/api/auth/invitations/accept')
-      .send({ token, password: 'SenhaConvidado123' })
+      .send({ token, password: 'SenhaConvidado123', fullName: 'Convidado Teste' })
       .expect(200);
 
     expect(acceptRes.body.user.email).toBe('convidado@teste.com');
@@ -74,7 +74,7 @@ describe('Convite', () => {
 
     await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: 'jaexiste@teste.com', password: 'SenhaForte123' });
+      .send({ email: 'jaexiste@teste.com', password: 'SenhaForte123', fullName: 'Já Existe' });
 
     const pool = getTestPool();
     await pool.query(`UPDATE users SET last_login_at = now() WHERE email = 'jaexiste@teste.com'`);
@@ -100,6 +100,30 @@ describe('Convite', () => {
     expect(res.body).toBeDefined();
   });
 
+  it('convidado aceita convite com CPF inválido — 400', async () => {
+    const adminAgent = await loginAdmin();
+    const scenario = makeScenario(app, memoryTransport);
+
+    await adminAgent
+      .post('/api/auth/invitations')
+      .send({ email: 'cpfinvalido@convite.com', role: 'user' });
+
+    const email = await scenario.lastEmailTo('cpfinvalido@convite.com');
+    const token = scenario.extractLinkToken(email!);
+
+    const res = await request(app.getHttpServer())
+      .post('/api/auth/invitations/accept')
+      .send({
+        token,
+        password: 'SenhaConvidado123',
+        fullName: 'CPF Inválido',
+        cpf: '111.111.111-11',
+      })
+      .expect(400);
+
+    expect(Array.isArray(res.body.details)).toBe(true);
+  });
+
   it('convidado reutiliza o link de convite — 400', async () => {
     const adminAgent = await loginAdmin();
     const scenario = makeScenario(app, memoryTransport);
@@ -111,12 +135,12 @@ describe('Convite', () => {
 
     await request(app.getHttpServer())
       .post('/api/auth/invitations/accept')
-      .send({ token, password: 'SenhaConvidado123' })
+      .send({ token, password: 'SenhaConvidado123', fullName: 'Convidado Reuse' })
       .expect(200);
 
     const res2 = await request(app.getHttpServer())
       .post('/api/auth/invitations/accept')
-      .send({ token, password: 'SenhaConvidado123' })
+      .send({ token, password: 'SenhaConvidado123', fullName: 'Convidado Reuse' })
       .expect(400);
     expect(res2.body.code).toBe('AUTH_EMAIL_TOKEN_INVALID');
   });

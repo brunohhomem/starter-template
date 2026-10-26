@@ -62,10 +62,18 @@ export class AuthController {
   })
   @HttpCode(HttpStatus.CREATED)
   async register(
-    @Body(new ZodValidationPipe(registerRequestSchema)) body: { email: string; password: string },
+    @Body(new ZodValidationPipe(registerRequestSchema))
+    body: { email: string; password: string; fullName: string; cpf?: string; phone?: string },
     @Res({ passthrough: true }) res: Response,
   ) {
-    return this.authService.register(body.email, body.password, res);
+    return this.authService.register(
+      body.email,
+      body.password,
+      body.fullName,
+      body.cpf,
+      body.phone,
+      res,
+    );
   }
 
   @Post('login')
