@@ -49,7 +49,7 @@ export default defineConfig({
       env: sharedEnv,
     },
     {
-      command: 'pnpm exec next start --port 3000',
+      command: 'node ./node_modules/next/dist/bin/next start --port 3000',
       cwd: '.',
       url: 'http://127.0.0.1:3000',
       timeout: 120_000,

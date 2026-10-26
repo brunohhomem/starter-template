@@ -303,7 +303,7 @@ jobs:
             -e NODE_ENV -e MAIL_DRIVER -e SMTP_HOST -e SMTP_PORT \
             -e PLAYWRIGHT_BROWSERS_PATH \
             mcr.microsoft.com/playwright:v1.64.1-noble \
-            bash -lc 'corepack pnpm --filter @starter/web exec playwright test'
+            bash -lc 'cd /work/apps/web && ./node_modules/.bin/playwright test'
 
       - name: Relatório do Playwright
         if: always()
