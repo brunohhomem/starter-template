@@ -162,4 +162,18 @@ async function main(): Promise<void> {
   }
 }
 
-void main();
+// O CLI `scripts/db-seed.ts` importa este módulo. Sem o guarda, as duas
+// execuções correm juntas e a segunda inserção perde a corrida da unique.
+function isDirectExecution(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  const normalized = entry.replace(/\\/g, '/');
+  return (
+    normalized.endsWith('/database/seed/admin.seed.ts') ||
+    normalized.endsWith('/database/seed/admin.seed.js')
+  );
+}
+
+if (isDirectExecution()) {
+  void main();
+}

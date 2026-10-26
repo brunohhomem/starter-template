@@ -2,13 +2,19 @@ import { z } from '../zod';
 
 export const emailSchema = z.string().trim().toLowerCase().email().max(254);
 
+// O bundle de produção do browser reescreve o global `Buffer` do Node e a
+// validação passa a lançar. TextEncoder existe nos dois lados.
+function utf8ByteLength(value: string): number {
+  return new TextEncoder().encode(value).length;
+}
+
 export const passwordSchema = z
   .string()
   .min(10, 'A senha deve ter pelo menos 10 bytes')
   .max(72, 'A senha deve ter no máximo 72 bytes')
   .refine((val) => /[A-Za-z]/.test(val), 'A senha deve conter pelo menos uma letra')
   .refine((val) => /[0-9]/.test(val), 'A senha deve conter pelo menos um dígito')
-  .refine((val) => Buffer.byteLength(val, 'utf8') <= 72, 'A senha excede 72 bytes UTF-8');
+  .refine((val) => utf8ByteLength(val) <= 72, 'A senha excede 72 bytes UTF-8');
 
 export const fullNameSchema = z.string().trim().min(2).max(120);
 

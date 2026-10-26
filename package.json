@@ -18,7 +18,16 @@
     "infra:down": "docker compose -f compose.dev.yaml down",
     "infra:logs": "docker compose -f compose.dev.yaml logs -f",
     "infra:reset": "docker compose -f compose.dev.yaml down -v",
-    "db:seed": "pnpm --filter @starter/api db:seed"
+    "keys:generate": "pnpm --filter @starter/scripts keys:generate",
+    "keys:rotate": "pnpm --filter @starter/scripts keys:rotate",
+    "db:generate": "pnpm --filter @starter/api db:generate",
+    "db:migrate": "pnpm --filter @starter/api db:migrate",
+    "db:seed": "pnpm --filter @starter/api db:seed",
+    "db:studio": "pnpm --filter @starter/api db:studio",
+    "test:integration": "pnpm turbo run test:integration",
+    "worker:dev": "pnpm --filter @starter/api worker:dev",
+    "boot:check": "pnpm --filter @starter/scripts boot:check",
+    "e2e": "pnpm --filter @starter/web e2e"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

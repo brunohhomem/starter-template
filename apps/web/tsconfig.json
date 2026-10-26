@@ -5,6 +5,12 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "next.config.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "next.config.ts",
+    "playwright.config.ts",
+    "e2e/**/*.ts"
+  ],
   "exclude": ["node_modules"]
 }

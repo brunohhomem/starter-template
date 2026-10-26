@@ -7,13 +7,13 @@
 | Unitário da API               | Vitest + SWC (`vitest.config.mjs`)                       |
 | Integração da API             | Vitest + SWC (`vitest.integration.config.mjs`), em série |
 | Unitário do web e do `shared` | Vitest e Testing Library                                 |
-| E2E                           | Playwright, na fase em que a spec de E2E for aprovada    |
+| E2E                           | Playwright Chromium (`pnpm e2e`)                         |
 
 Cobertura é só relatório, sem gate.
 
 ## Cenários obrigatórios
 
-Quando a fase correspondente existir, a suíte cobre: throttler, env ausente, seed idempotente, rotação e reuso de refresh token, guards e roles, toggle de cadastro, `must_change_password`, fluxos de e-mail, validação de upload, backup e restore, e mobile-first.
+A suíte cobre throttler, env ausente, seed idempotente, rotação e reuso de refresh token, guards e roles, toggle de cadastro, `must_change_password` e fluxos de e-mail. Upload, backup e 2FA ficam fora do v1, com gatilho no ADR 0002. O mobile-first do smoke está no E2E.
 
 ## Variáveis de ambiente e o cache do Turborepo
 
@@ -40,18 +40,23 @@ Toda variável de ambiente usada por uma tarefa precisa estar declarada em `env`
 
 ## Arquivos de integração
 
-| Arquivo                              | Responsabilidade                                     |
-| ------------------------------------ | ---------------------------------------------------- |
-| `test/cadastro.int-spec.ts`          | Registro de usuário, validações de senha, flags      |
-| `test/login.int-spec.ts`             | Login, papéis, CSRF, throttler                       |
-| `test/sessao.int-spec.ts`            | Me, refresh, logout, cascata de banco                |
-| `test/senha.int-spec.ts`             | Esqueci/reset senha, troca de senha, must_change     |
-| `test/confirmacao-email.int-spec.ts` | Confirmar e reenviar e-mail de confirmação           |
-| `test/convite.int-spec.ts`           | Convidar usuário e aceitar convite                   |
-| `test/configuracoes.int-spec.ts`     | Configurações de e-mail (SMTP/Resend)                |
-| `test/seguranca.int-spec.ts`         | Segurança de resposta, hash de tokens, XSS no e-mail |
-| `test/database.int-spec.ts`          | Isolamento via TRUNCATE                              |
-| `test/logging.int-spec.ts`           | Redação de campos sensíveis nos logs                 |
+| Arquivo                                | Responsabilidade                                      |
+| -------------------------------------- | ----------------------------------------------------- |
+| `test/cadastro.int-spec.ts`            | Registro de usuário, validações de senha, flags       |
+| `test/login.int-spec.ts`               | Login, papéis, CSRF, throttler                        |
+| `test/sessao.int-spec.ts`              | Me, refresh, logout, cascata de banco                 |
+| `test/senha.int-spec.ts`               | Esqueci/reset senha, troca de senha, must_change      |
+| `test/confirmacao-email.int-spec.ts`   | Confirmar e reenviar e-mail de confirmação            |
+| `test/convite.int-spec.ts`             | Convidar usuário e aceitar convite                    |
+| `test/configuracoes.int-spec.ts`       | Toggle de cadastro                                    |
+| `test/perfil.int-spec.ts`              | Perfil da pessoa                                      |
+| `test/usuarios.int-spec.ts`            | Lista, papel e status de usuários                     |
+| `test/mail-queue.int-spec.ts`          | Reenvio e limpeza da fila                             |
+| `test/health.int-spec.ts`              | Health da API                                         |
+| `test/migration-atomicity.int-spec.ts` | Atomicidade da migration                              |
+| `test/seguranca.int-spec.ts`           | Segredos, throttler por usuário, CSRF e XSS no e-mail |
+| `test/database.int-spec.ts`            | Isolamento via TRUNCATE                               |
+| `test/logging.int-spec.ts`             | Redação de campos sensíveis nos logs                  |
 
 ## Helpers compartilhados
 
@@ -66,4 +71,11 @@ Toda variável de ambiente usada por uma tarefa precisa estar declarada em `env`
 
 - Unitários: `pnpm test` (Vitest).
 - Integração: `pnpm test:integration` (Vitest, em série).
-- CI: job `integration` separado do `verify` (ver `.github/workflows/ci.yml`).
+- CI: jobs `integration` e `e2e`, separados do `verify` (ver `.github/workflows/ci.yml`).
+
+## E2E
+
+- Comando: `pnpm e2e`. Arquivo: `apps/web/e2e/admin-smoke.e2e.ts`.
+- Chromium, viewport 390×844, um worker. O teste entra como admin, troca a senha obrigatória e chega em `/app` sem scroll horizontal.
+- Sobe o build de produção da API, do worker e do web. O banco é `app_e2e`, recriado a cada execução, para não alterar o banco de development.
+- No CI, `retries: 2` e o relatório HTML vai como artifact. Na máquina local não há retry.

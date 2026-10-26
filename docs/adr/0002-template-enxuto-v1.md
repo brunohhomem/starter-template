@@ -1,11 +1,11 @@
 # ADR 0002 — Template base enxuto (v1)
 
-| Campo     | Valor                                                              |
-| --------- | ------------------------------------------------------------------ |
-| Status    | Aceito em 2026-10-23 (pendências da seção 9 com o padrão proposto) |
-| Data      | 2026-10-23                                                         |
-| Substitui | ADR 0001 (arquivado)                                               |
-| Decisor   | Bruno                                                              |
+| Campo     | Valor                                                   |
+| --------- | ------------------------------------------------------- |
+| Status    | Aceito em 2026-10-23. F3 a F6 concluídas em 2026-10-26. |
+| Data      | 2026-10-23                                              |
+| Substitui | ADR 0001 (arquivado)                                    |
+| Decisor   | Bruno                                                   |
 
 ---
 
@@ -19,6 +19,8 @@ O ADR 0001 previa 11 fases (F0–F10). Em cerca de 2 dias, F0–F2 foram conclu�
 4. Parte do escopo (deploy, backup, 2FA, upload, rotação de chaves) foi decidida no abstrato, sem um projeto real pedindo.
 
 Com este ADR, o template passa a ser **o mínimo que todo projeto precisa no dia 1, pronto para forkar**. O resto entra quando um projeto real pedir.
+
+O parágrafo acima é o motivo da decisão. O que foi entregue está na seção 8.
 
 ## 2. Decisões que continuam valendo
 
@@ -115,6 +117,7 @@ Todo teste é um **caso de uso**: um ator tenta uma ação e o teste confere o r
 |                       | Admin desliga o cadastro                                                        | Visitante passa a receber 403 na hora                        |
 | Perfil                | Usuário altera o próprio CPF para um inválido                                   | 400, erro no campo `cpf`                                     |
 | Segurança             | Nenhuma senha, token ou hash aparece em log, auditoria ou payload da fila       | —                                                            |
+|                       | 30 usuários autenticados no mesmo IP navegam                                    | Nenhum recebe 429                                            |
 |                       | Requisição que altera estado vinda de outra origem                              | 403                                                          |
 |                       | Nome com HTML hostil no cadastro                                                | Sai escapado no e-mail                                       |
 
@@ -171,12 +174,14 @@ Meta: de ~5,1 mil para ~1,5 mil linhas de teste, cobrindo todo o catálogo. O `d
 
 ## 8. Fases
 
-| Fase          | Conteúdo                                                                                                                   | Observação                                                               |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| F3 (restante) | Fila, worker e limpeza; `EmailTokensService`; confirmação e reset; convite; toggle de cadastro + audit mínimo; docs curtos | A T12 sai; os casos de segurança do catálogo cobrem o que importava dela |
-| F4            | Testes enxutos (seção 5) + migração Jest → Vitest                                                                          | PR próprio, depois do merge da F3, para não conflitar                    |
-| F5            | Pessoas (API) + frontend v1 (seção 3, item 4)                                                                              | Pode virar 2 PRs (auth / área logada) se passar de um dia                |
-| F6            | README com checklist pós-criação, smoke E2E mobile (login → área logada, sem scroll horizontal), revisão final             | Template v1 pronto para forkar                                           |
+F3 a F6 foram entregues. A tabela registra o que cada uma cobriu.
+
+| Fase | Conteúdo                                                                                                    | Observação                                                                |
+| ---- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| F3   | Fila, worker e limpeza; `EmailTokensService`; confirmação e reset; convite; toggle de cadastro; docs curtos | A T12 saiu; os casos de segurança do catálogo cobrem o que importava dela |
+| F4   | Testes enxutos (seção 5) e migração para Vitest                                                             | O Jest não faz parte do template                                          |
+| F5   | Pessoas (API) e frontend v1 (seção 3, item 4)                                                               | Entregue em dois PRs                                                      |
+| F6   | README com checklist pós-fork, smoke E2E mobile (login, troca de senha, área logada, sem scroll horizontal) | Template v1 pronto para forkar                                            |
 
 ## 9. Consequências e riscos
 
@@ -186,14 +191,16 @@ Meta: de ~5,1 mil para ~1,5 mil linhas de teste, cobrindo todo o catálogo. O `d
 | Menos testes deixam passar regressão em detalhe interno             | A integração cobre o comportamento observável; o detalhe interno pode mudar livremente |
 | O executor único deriva numa spec longa                             | Specs curtas; dividir a fase em PRs quando passar de um dia                            |
 | Itens adiados viram dívida esquecida                                | A seção 4 tem gatilho explícito para cada item                                         |
-| A migração Jest → Vitest quebra decorators ou metadata              | A integração já roda em Vitest + SWC; se quebrar, a migração é revertida e o Jest fica |
+| A migração para Vitest quebra decorators ou metadata                | A migração foi feita. A integração roda em Vitest + SWC                                |
 
-## 10. Pendências para aprovação
+## 10. Decisões da aprovação
 
-| #   | Ponto                                   | Padrão proposto                    |
+Fechadas com o padrão abaixo. Não são trabalho em aberto.
+
+| #   | Ponto                                   | Decisão                            |
 | --- | --------------------------------------- | ---------------------------------- |
-| 1   | Criação direta de usuário pelo admin    | Sai do v1 (o convite cobre)        |
-| 2   | Jest → Vitest na API                    | Migrar na F4                       |
+| 1   | Criação direta de usuário pelo admin    | Fora do v1 (o convite cobre)       |
+| 2   | Runner de testes da API                 | Vitest, desde a F4                 |
 | 3   | Audit log sem endpoint de listagem      | Sem endpoint no v1                 |
 | 4   | Valor inicial de `registration_enabled` | Desligado em prod, ligado em dev   |
 | 5   | CPF no cadastro                         | Opcional; se informado, é validado |

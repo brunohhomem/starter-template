@@ -46,6 +46,9 @@ const processEnvAllowedPaths = [
   'apps/api/drizzle.config.ts',
   // O rewrite do Next é resolvido antes do app. Não há ENV token neste processo.
   'apps/web/next.config.ts',
+  // O smoke E2E sobe o build fora do Nest e lê o admin semeado no .env.
+  'apps/web/playwright.config.ts',
+  'apps/web/e2e/**',
   '**/test/**/*.ts',
   'test/**/*.ts',
 ];

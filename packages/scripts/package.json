@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "keys:generate": "tsx src/keys-generate.ts",
-    "keys:rotate": "tsx src/keys-rotate.ts"
+    "keys:rotate": "tsx src/keys-rotate.ts",
+    "boot:check": "node boot-production.mjs"
   },
   "dependencies": {
     "zod": "^3.23.8"
