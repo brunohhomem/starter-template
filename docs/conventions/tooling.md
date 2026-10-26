@@ -26,7 +26,7 @@ O `lint-staged` roda na raiz. O `eslint --fix` usa o `eslint.config.mjs` da raiz
 
 ## TypeScript
 
-O TypeScript do monorepo é o **6.0.3**. A estável mais recente é a 7.0.2, que o `typescript-eslint` 8.72.0 (`typescript` `<6.1.0`) e o `ts-jest` 29 (`typescript` `<7`) ainda não aceitam.
+O TypeScript do monorepo é o **6.0.3**. A estável mais recente é a 7.0.2, que o `typescript-eslint` 8.72.0 (`typescript` `<6.1.0`) ainda não aceita.
 
 ## pnpm
 

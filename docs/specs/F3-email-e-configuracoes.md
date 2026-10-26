@@ -1,9 +1,6 @@
 # Spec F3 — E-mail, fluxos de token, configurações e auditoria
 
-> **EXECUÇÃO DE PONTA A PONTA, EM CARTÕES DE TAREFA.**
-> Esta spec é executada por uma cadeia **Bruno → Claude (analista) → Claude Code (gerente) → OpenCode (executor)**. O Claude Code fatia a spec em cartões (seção 8), entrega **um cartão por sessão nova do OpenCode**, verifica, commita e só então passa ao próximo. Cada cartão é autossuficiente: lista os blocos de referência (seção 4–7) que o gerente deve **colar inline** no prompt do executor. Nenhuma ambiguidade fica em aberto: onde houve escolha, a decisão está registrada na seção 3.
->
-> Papéis e procedimento: `docs/specs/GERENCIA-OPENCODE.md`. Cartões, ordem e contratos: aqui.
+> Spec executada. O fluxo vigente está no ADR 0002 e em `AGENTS.md`. O procedimento antigo de gerente ficou arquivado em `docs/specs/arquivo/`.
 
 Versão: 1 · Depende de: **F2 concluída** (auth, sessões, guards, throttler, seed) · ADR: `docs/adr/0001-template-base-monorepo.md`
 
@@ -288,4 +285,4 @@ Ordem fixa. **Numeração fixa T1–T14.** Campos de cada cartão:
 
 (1) T1–T14 `feita` (ou `parcial` com pendência justificada); (2) **gate pré-PR verde antes de abrir o PR**, com format, lint, typecheck, build sem cache, testes unitários e de integração e os passos dos workflows reproduzidos localmente em checkout limpo; (3) dois jobs de CI verdes; (4) migrations atômicas com prova; (5) verificação manual com Mailpit registrada; (6) nenhuma senha/token/hash em logs, auditoria, resposta ou job concluído; (7) `docs/email.md` pronto; (8) PR aberto, sem merge; (9) `docs/specs/F3-progresso.md` completo.
 
-**Relatório final** (pt-BR, curto): tabela T1–T14 com status, commit e nº de sessões do OpenCode usadas · decisões tomadas · tarefas em que o gerente teve de intervir e por quê · pendências · link do PR e CI.
+**Relatório final** (pt-BR, curto): tabela T1–T14 com status e commit · decisões tomadas · intervenções e o porquê · o que ficou de fora · link do PR e CI.

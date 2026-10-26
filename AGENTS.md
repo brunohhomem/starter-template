@@ -7,14 +7,17 @@ Este repositório é o template base de um monorepo pnpm. A API é NestJS (`apps
 - `pnpm lint`
 - `pnpm typecheck`
 - `pnpm test`
+- `pnpm test:integration`
 - `pnpm build`
 - `pnpm format` e `pnpm format:check`
 - `pnpm --filter @starter/api start:dev`
+- `pnpm worker:dev`
 - `pnpm --filter @starter/web dev`
 - `pnpm infra:up` / `pnpm infra:down` / `pnpm infra:logs` / `pnpm infra:reset`
 - `pnpm keys:generate` [--file <caminho>] / `pnpm keys:rotate <NOME>` [--yes]
-- `pnpm db:generate <nome>` / `pnpm db:migrate` / `pnpm db:studio`
-- `pnpm test:integration`
+- `pnpm db:generate <nome>` / `pnpm db:migrate` / `pnpm db:seed` / `pnpm db:studio`
+- `pnpm boot:check`
+- `pnpm e2e`
 
 ## Fluxo
 
@@ -55,3 +58,4 @@ Este repositório é o template base de um monorepo pnpm. A API é NestJS (`apps
 - Ao mexer em versões, ESLint, Husky ou CI, leia `docs/conventions/tooling.md`.
 - Autenticação: leia `docs/auth.md`. Toda rota nova é protegida por padrão; `@Public()` exige justificativa em comentário de uma linha.
 - E-mail: leia `docs/email.md`. Drivers, fila BullMQ, TTLs dos tokens e risco aceito sobre o token no payload.
+- Smoke E2E: `pnpm e2e`. O detalhe está em `docs/conventions/testing.md`.
