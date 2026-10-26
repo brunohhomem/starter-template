@@ -144,7 +144,23 @@ Todo teste é um **caso de uso**: um ator tenta uma ação e o teste confere o r
 
 Meta: de ~5,1 mil para ~1,5 mil linhas de teste, cobrindo todo o catálogo. O `docs/conventions/testing.md` é reescrito com esta política.
 
-## 6. Fluxo de execução
+## 6. Frontend
+
+| #   | Decisão                                                                                                                                                                                                                                                                             | Por quê                                                                                                                                                                                                        |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Regra de negócio só no NestJS.** O Next não usa Server Actions nem Route Handlers                                                                                                                                                                                                 | Evita duas fontes de verdade e lógica duplicada; o Next é só interface                                                                                                                                         |
+| 2   | **Onde buscar dados:** páginas públicas sem dado de usuário são server components estáticos. Tudo que depende do usuário logado roda no cliente, com TanStack Query + Axios. Server component não chama a API autenticada                                                           | O cookie httpOnly vai sozinho no mesmo domínio (proxy `/api`). Repassar cookie e refazer refresh no servidor é complexidade sem ganho para área logada. Custo aceito: a área logada abre com estado de loading |
+| 3   | **Estado de autenticação:** a query `['me']` é a fonte única. Login, logout, aceite de convite e troca de senha invalidam essa query. O layout da área logada redireciona para `/login` em 401 e para `/change-password` se `mustChangePassword`; o menu de admin depende do `role` | Uma fonte só evita estado de auth duplicado em context, store e cookie                                                                                                                                         |
+| 4   | **Middleware só checa a presença do cookie** para redirecionar rápido; quem valida de verdade é a API                                                                                                                                                                               | Verificar JWT no middleware exigiria o secret no front                                                                                                                                                         |
+| 5   | **Interceptor do Axios:** um refresh por vez, com as requisições concorrentes em fila. Se o refresh falhar, limpa o cache do TanStack e vai para `/login`                                                                                                                           | Vários refresh simultâneos disparam a detecção de reuso e derrubam a sessão                                                                                                                                    |
+| 6   | **Formulários validam no cliente com os mesmos schemas do `shared`** (`zodResolver`). A API continua sendo a verdade                                                                                                                                                                | Feedback imediato sem duplicar regra                                                                                                                                                                           |
+| 7   | **Erro da API vira erro de campo por um helper único:** `details[].path` → `setError` no campo; `code` → mensagem pt-BR de um mapa único de códigos; o resto vira toast genérico com o `requestId`                                                                                  | O "CPF inválido" aparece no campo, igual em toda tela, e o `requestId` liga o erro ao log                                                                                                                      |
+| 8   | **Máscaras (CPF, telefone) com funções próprias**, sem biblioteca. O valor enviado à API é o que o schema do `shared` normaliza                                                                                                                                                     | São duas máscaras; uma dependência não se paga                                                                                                                                                                 |
+| 9   | **Visual:** shadcn com tokens neutros só no `globals.css`; a referência de layout é o `DESIGN.md`                                                                                                                                                                                   | Trocar a identidade visual de um fork é trocar tokens, não componentes                                                                                                                                         |
+| 10  | **Testes no front:** nenhum teste unitário de componente. A garantia vem do lint de fronteiras, do typecheck, do build, dos casos de uso da API e do E2E smoke (F6)                                                                                                                 | O comportamento já está provado na API; teste de componente aqui seria o "1 + 1 = 2"                                                                                                                           |
+| 11  | **Rotas em inglês, textos em pt-BR**                                                                                                                                                                                                                                                | Os links dos e-mails já usam `/confirm-email`, `/reset-password` e `/accept-invite`                                                                                                                            |
+
+## 7. Fluxo de execução
 
 1. A spec tem 1 página: objetivo, contratos (env, tabelas, endpoints, telas), decisões que não se rediscutem, aceite e fora de escopo. O detalhe interno fica com as convenções e o lint.
 2. Um executor único (Claude Code ou Cursor) roda a spec inteira numa sessão, com um commit por entrega lógica. A cadeia gerente + OpenCode sai, e o `GERENCIA-OPENCODE.md` é arquivado.
@@ -153,7 +169,7 @@ Meta: de ~5,1 mil para ~1,5 mil linhas de teste, cobrindo todo o catálogo. O `d
 5. As paradas obrigatórias continuam: ação destrutiva, credencial ausente, dependência fora da lista e conflito entre regras.
 6. A partir da F5, cada fase entrega back e tela juntos quando tiver as duas partes.
 
-## 7. Fases
+## 8. Fases
 
 | Fase          | Conteúdo                                                                                                                   | Observação                                                               |
 | ------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
@@ -162,7 +178,7 @@ Meta: de ~5,1 mil para ~1,5 mil linhas de teste, cobrindo todo o catálogo. O `d
 | F5            | Pessoas (API) + frontend v1 (seção 3, item 4)                                                                              | Pode virar 2 PRs (auth / área logada) se passar de um dia                |
 | F6            | README com checklist pós-criação, smoke E2E mobile (login → área logada, sem scroll horizontal), revisão final             | Template v1 pronto para forkar                                           |
 
-## 8. Consequências e riscos
+## 9. Consequências e riscos
 
 | Risco                                                               | Mitigação                                                                              |
 | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
@@ -172,7 +188,7 @@ Meta: de ~5,1 mil para ~1,5 mil linhas de teste, cobrindo todo o catálogo. O `d
 | Itens adiados viram dívida esquecida                                | A seção 4 tem gatilho explícito para cada item                                         |
 | A migração Jest → Vitest quebra decorators ou metadata              | A integração já roda em Vitest + SWC; se quebrar, a migração é revertida e o Jest fica |
 
-## 9. Pendências para aprovação
+## 10. Pendências para aprovação
 
 | #   | Ponto                                   | Padrão proposto                    |
 | --- | --------------------------------------- | ---------------------------------- |

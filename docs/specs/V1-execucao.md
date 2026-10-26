@@ -158,7 +158,7 @@ Módulos `people` e `users` seguem entity/dto/repository/service/controller.
 **Base:**
 
 1. Proxy de `/api` para a API em dev, via `rewrites` no `next.config.ts` com `API_ORIGIN`.
-2. Tema claro, escuro e sistema, com tokens só no `globals.css`. Escreva o `DESIGN.md` se ainda faltar alguma seção do ADR 0001 3.14.
+2. Tema claro, escuro e sistema, com tokens só no `globals.css`. Complete o `DESIGN.md` onde faltar (princípios, tokens, componentes, estados, acessibilidade, proibições). As decisões de frontend estão no ADR 0002, seção 6.
 3. Axios com interceptor que faz **um** refresh por 401 e enfileira as requisições concorrentes.
 4. `middleware.ts`: só checa a presença do cookie. Rotas públicas de auth redirecionam para `/app` quem está logado, e `/app/*` redireciona para `/login` quem não está.
 5. Se `me.mustChangePassword` for verdadeiro, redireciona para `/change-password`.
