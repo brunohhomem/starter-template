@@ -1,9 +1,15 @@
-import { Module, Inject } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import type { Env } from '../../config/env.schema';
 import { ENV } from '../../config/app-config.module';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { PasswordService } from './password.service';
+import { PasswordController } from './password.controller';
+import { EmailConfirmationService } from './email-confirmation.service';
+import { EmailConfirmationController } from './email-confirmation.controller';
+import { InvitationsService } from './invitations.service';
+import { InvitationsController } from './invitations.controller';
 import { UsersRepository } from './users.repository';
 import { SessionsRepository } from './sessions.repository';
 import { PasswordHasher } from './password-hasher';
@@ -15,9 +21,17 @@ import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [SettingsModule, EmailTokensModule, AuditModule, JwtModule.register({})],
-  controllers: [AuthController],
+  controllers: [
+    AuthController,
+    PasswordController,
+    EmailConfirmationController,
+    InvitationsController,
+  ],
   providers: [
     AuthService,
+    PasswordService,
+    EmailConfirmationService,
+    InvitationsService,
     UsersRepository,
     SessionsRepository,
     {
