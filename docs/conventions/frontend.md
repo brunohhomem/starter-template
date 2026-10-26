@@ -17,6 +17,7 @@ Feature em `features/<feature>/{components,hooks,api,schemas}`. Componente shadc
 3. Tabela vira lista de cards abaixo de `md`.
 4. Campo de formulário com fonte de no mínimo 16px e alvo de toque de no mínimo 44px.
 5. Use `dvh` no lugar de `vh` e respeite as safe areas.
-6. Quando o E2E existir, a suíte completa roda no viewport mobile (390×844) e o desktop (1280×800) fica só com smoke. Um fixture falha se a página tiver scroll horizontal ou alvo de toque abaixo do mínimo. Comparação de screenshot não faz parte da suíte.
+6. Testes: nenhum unitário de componente. O E2E é um único smoke em viewport mobile (390×844), que falha se houver scroll horizontal (ADR 0002, seção 6).
+7. Regra de negócio só na API: sem Server Actions e sem Route Handlers. Dados do usuário logado são buscados no cliente com TanStack Query; a query `['me']` é a fonte única do estado de autenticação (ADR 0002, seção 6).
 
 Idioma da interface: pt-BR fixo. Formulário usa os schemas zod do `shared`.

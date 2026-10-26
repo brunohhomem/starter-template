@@ -11,6 +11,10 @@ A semântica fica aqui. Os valores (cor, espaço, raio, sombra) ficam só no `gl
 
 Use o token semântico (`bg-primary`, `text-muted`, `border-border`). Não escreva hex, rgb nem oklch no componente. A fonte da verdade dos valores é o `globals.css`.
 
+## Tema
+
+Claro, escuro e sistema. O modo ativo fica na classe `dark` do documento. Trocar a paleta de um fork é editar o `globals.css`, não os componentes.
+
 ## Componentes
 
 1. Componente de UI só vem do shadcn, em `components/ui`.
