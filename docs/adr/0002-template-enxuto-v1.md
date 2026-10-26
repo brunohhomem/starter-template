@@ -115,6 +115,7 @@ Todo teste é um **caso de uso**: um ator tenta uma ação e o teste confere o r
 |                       | Admin desliga o cadastro                                                        | Visitante passa a receber 403 na hora                        |
 | Perfil                | Usuário altera o próprio CPF para um inválido                                   | 400, erro no campo `cpf`                                     |
 | Segurança             | Nenhuma senha, token ou hash aparece em log, auditoria ou payload da fila       | —                                                            |
+|                       | 30 usuários autenticados no mesmo IP navegam                                    | Nenhum recebe 429                                            |
 |                       | Requisição que altera estado vinda de outra origem                              | 403                                                          |
 |                       | Nome com HTML hostil no cadastro                                                | Sai escapado no e-mail                                       |
 

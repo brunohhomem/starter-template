@@ -54,7 +54,7 @@ import Redis from 'ioredis';
           },
           {
             name: 'register',
-            limit: 5,
+            limit: 20,
             ttl: 3600000, // 60 minutes in ms
             blockDuration: 3600000, // 60 minutes in ms
           },
@@ -102,10 +102,11 @@ import Redis from 'ioredis';
     { provide: APP_PIPE, useClass: ZodValidationPipe },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },
-    // Guards order: Throttler → Origin → JwtAuth → Roles → MustChangePassword
-    { provide: APP_GUARD, useClass: AppThrottlerGuard },
-    { provide: APP_GUARD, useClass: OriginGuard },
+    // JwtAuth antes do throttler para o tracker default usar o mesmo request.user,
+    // sem verificar o access token uma segunda vez.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: OriginGuard },
+    { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: MustChangePasswordGuard },
   ],

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import bcrypt from 'bcrypt';
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
 import { createTestApp, closeTestApp, resetDatabase, resetThrottle } from './integration-utils';
@@ -99,4 +100,30 @@ describe('Segurança', () => {
     expect(html).not.toContain('<img src=x onerror=alert(1)>');
     expect(html).not.toContain(hostileAppName);
   });
+
+  it('30 usuários autenticados no mesmo IP navegam sem receber 429', async () => {
+    const pool = getTestPool();
+    const password = 'SenhaForte123';
+    const passwordHash = await bcrypt.hash(password, 4);
+    const scenario = makeScenario(app);
+    const agents = [];
+
+    for (let index = 0; index < 30; index += 1) {
+      const email = `navegacao-${index}@teste.com`;
+      await pool.query(
+        'INSERT INTO users (email, password_hash, role, email_verified_at) VALUES ($1, $2, $3, now())',
+        [email, passwordHash, 'user'],
+      );
+      agents.push(await scenario.loginAs({ email, password }));
+    }
+
+    await resetThrottle();
+
+    for (const agent of agents) {
+      for (let visit = 0; visit < 5; visit += 1) {
+        const response = await agent.get('/api/auth/me');
+        expect(response.status).toBe(200);
+      }
+    }
+  }, 120_000);
 });

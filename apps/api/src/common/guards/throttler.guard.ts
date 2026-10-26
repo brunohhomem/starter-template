@@ -77,8 +77,9 @@ export class AppThrottlerGuard extends ThrottlerGuard {
         return `throttle:invite:${user?.userId ?? this.getIp(request)}`;
       }
       default: {
-        const ip = this.getIp(request);
-        return `throttle:default:${ip}`;
+        const userId = request.user?.userId;
+        if (userId) return `throttle:default:user:${userId}`;
+        return `throttle:default:${this.getIp(request)}`;
       }
     }
   }
