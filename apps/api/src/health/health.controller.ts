@@ -19,12 +19,18 @@ const API_VERSION = require('../../package.json').version as string;
 @ApiTags('health')
 @Controller('health')
 @Public()
+// O probe não entra nos baldes de autenticação. `forgot` e `resend` são 3 por hora,
+// e o boot consulta /health até a API responder.
 @SkipThrottle({
   default: true,
   login: true,
   register: true,
   refresh: true,
   ['change-password']: true,
+  forgot: true,
+  ['token-submit']: true,
+  resend: true,
+  invite: true,
 })
 export class HealthController {
   constructor(
