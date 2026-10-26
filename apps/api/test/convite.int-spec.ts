@@ -11,7 +11,7 @@ import {
 import { startTestWorker } from './test-worker';
 import { MemoryTransport } from '../src/modules/mail/transports/memory.transport';
 import { seedAdmin } from '../src/database/seed/admin.seed';
-import { waitForEmail, extractToken } from './test-email-helpers';
+import { makeScenario } from './scenario';
 
 describe('Convite', () => {
   let app: INestApplication;
@@ -37,31 +37,27 @@ describe('Convite', () => {
     await resetThrottle();
   });
 
-  async function loginAdmin(): Promise<string> {
+  async function loginAdmin() {
     await seedAdmin(getTestDb());
-    const loginRes = await request(app.getHttpServer())
-      .post('/api/auth/login')
-      .send({ email: 'admin@example.com', password: 'Admin@12345' });
-    return (loginRes.headers['set-cookie'] as string[])
-      .map((cookie) => cookie.split(';')[0])
-      .join('; ');
+    const scenario = makeScenario(app);
+    return scenario.loginAs({ email: 'admin@example.com', password: 'Admin@12345' });
   }
 
   it('admin convida um e-mail novo; o convidado aceita — entra com o papel convidado', async () => {
-    const adminCookies = await loginAdmin();
+    const adminAgent = await loginAdmin();
+    const scenario = makeScenario(app, memoryTransport);
 
-    const inviteRes = await request(app.getHttpServer())
+    const inviteRes = await adminAgent
       .post('/api/auth/invitations')
-      .set('Cookie', adminCookies)
       .send({ email: 'convidado@teste.com', role: 'user' })
       .expect(201);
 
     expect(inviteRes.body.email).toBe('convidado@teste.com');
     expect(inviteRes.body.role).toBe('user');
 
-    const email = await waitForEmail(memoryTransport, 'convidado@teste.com');
+    const email = await scenario.lastEmailTo('convidado@teste.com');
     expect(email).toBeDefined();
-    const token = extractToken(email!, 'token');
+    const token = scenario.extractLinkToken(email!);
 
     const acceptRes = await request(app.getHttpServer())
       .post('/api/auth/invitations/accept')
@@ -74,7 +70,7 @@ describe('Convite', () => {
   });
 
   it('admin convida um e-mail já cadastrado — 409', async () => {
-    const adminCookies = await loginAdmin();
+    const adminAgent = await loginAdmin();
 
     await request(app.getHttpServer())
       .post('/api/auth/register')
@@ -83,9 +79,8 @@ describe('Convite', () => {
     const pool = getTestPool();
     await pool.query(`UPDATE users SET last_login_at = now() WHERE email = 'jaexiste@teste.com'`);
 
-    const res = await request(app.getHttpServer())
+    const res = await adminAgent
       .post('/api/auth/invitations')
-      .set('Cookie', adminCookies)
       .send({ email: 'jaexiste@teste.com', role: 'user' })
       .expect(409);
 
@@ -93,16 +88,12 @@ describe('Convite', () => {
   });
 
   it('usuário comum tenta convidar — 403', async () => {
-    const userRegRes = await request(app.getHttpServer())
-      .post('/api/auth/register')
-      .send({ email: 'comum@teste.com', password: 'SenhaForte123' });
-    const userCookies = (userRegRes.headers['set-cookie'] as string[])
-      .map((cookie) => cookie.split(';')[0])
-      .join('; ');
+    const scenario = makeScenario(app);
+    const user = await scenario.createUser({ email: 'comum@teste.com' });
+    const userAgent = await scenario.loginAs(user);
 
-    const res = await request(app.getHttpServer())
+    const res = await userAgent
       .post('/api/auth/invitations')
-      .set('Cookie', userCookies)
       .send({ email: 'novo@teste.com', role: 'user' })
       .expect(403);
 
@@ -110,15 +101,13 @@ describe('Convite', () => {
   });
 
   it('convidado reutiliza o link de convite — 400', async () => {
-    const adminCookies = await loginAdmin();
+    const adminAgent = await loginAdmin();
+    const scenario = makeScenario(app, memoryTransport);
 
-    await request(app.getHttpServer())
-      .post('/api/auth/invitations')
-      .set('Cookie', adminCookies)
-      .send({ email: 'reuse@teste.com', role: 'user' });
+    await adminAgent.post('/api/auth/invitations').send({ email: 'reuse@teste.com', role: 'user' });
 
-    const email = await waitForEmail(memoryTransport, 'reuse@teste.com');
-    const token = extractToken(email!, 'token');
+    const email = await scenario.lastEmailTo('reuse@teste.com');
+    const token = scenario.extractLinkToken(email!);
 
     await request(app.getHttpServer())
       .post('/api/auth/invitations/accept')

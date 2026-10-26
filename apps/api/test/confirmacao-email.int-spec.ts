@@ -5,7 +5,7 @@ import { createTestApp, closeTestApp, resetDatabase, resetThrottle } from './int
 import { setupTestDatabase, teardownTestDatabase } from './integration-setup';
 import { startTestWorker } from './test-worker';
 import { MemoryTransport } from '../src/modules/mail/transports/memory.transport';
-import { waitForEmail, extractToken } from './test-email-helpers';
+import { makeScenario } from './scenario';
 
 describe('Confirmação de e-mail', () => {
   let app: INestApplication;
@@ -32,13 +32,12 @@ describe('Confirmação de e-mail', () => {
   });
 
   it('usuário confirma pelo link e depois reutiliza o link — 1º ok, 2º 400', async () => {
-    await request(app.getHttpServer())
-      .post('/api/auth/register')
-      .send({ email: 'confirma@teste.com', password: 'SenhaForte123' });
+    const scenario = makeScenario(app, memoryTransport);
+    await scenario.createUser({ email: 'confirma@teste.com' });
 
-    const email = await waitForEmail(memoryTransport, 'confirma@teste.com');
+    const email = await scenario.lastEmailTo('confirma@teste.com');
     expect(email).toBeDefined();
-    const token = extractToken(email!, 'token');
+    const token = scenario.extractLinkToken(email!);
 
     await request(app.getHttpServer()).post('/api/auth/email/confirm').send({ token }).expect(204);
 
@@ -50,23 +49,15 @@ describe('Confirmação de e-mail', () => {
   });
 
   it('usuário já confirmado pede reenvio — 409', async () => {
-    const registerRes = await request(app.getHttpServer())
-      .post('/api/auth/register')
-      .send({ email: 'jaconfirmado@teste.com', password: 'SenhaForte123' });
+    const scenario = makeScenario(app, memoryTransport);
+    const user = await scenario.createUser({ email: 'jaconfirmado@teste.com' });
 
-    const cookies = (registerRes.headers['set-cookie'] as string[])
-      .map((cookie) => cookie.split(';')[0])
-      .join('; ');
-
-    const email = await waitForEmail(memoryTransport, 'jaconfirmado@teste.com');
-    const token = extractToken(email!, 'token');
-
+    const email = await scenario.lastEmailTo('jaconfirmado@teste.com');
+    const token = scenario.extractLinkToken(email!);
     await request(app.getHttpServer()).post('/api/auth/email/confirm').send({ token }).expect(204);
 
-    const resend = await request(app.getHttpServer())
-      .post('/api/auth/email/resend')
-      .set('Cookie', cookies)
-      .expect(409);
+    const agent = await scenario.loginAs(user);
+    const resend = await agent.post('/api/auth/email/resend').expect(409);
     expect(resend.body.code).toBe('AUTH_EMAIL_ALREADY_CONFIRMED');
   });
 });
