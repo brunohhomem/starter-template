@@ -20,11 +20,10 @@ pnpm keys:generate
 pnpm infra:up
 pnpm db:migrate
 pnpm db:seed
-pnpm --filter @starter/api start:dev
-pnpm worker:dev
-pnpm --filter @starter/web dev
+pnpm dev
 ```
 
+- `pnpm dev` sobe a API, o worker e o web no mesmo terminal. É o `turbo run dev worker:dev`.
 - `pnpm keys:generate` cria o `.env` e não sobrescreve valor que já existe.
 - `pnpm infra:up` sobe Postgres, Redis e Mailpit. Os e-mails de desenvolvimento aparecem em `http://localhost:8025`.
 - `pnpm db:seed` cria o admin de `ADMIN_EMAIL`. Em development a senha inicial é `Admin@12345` e a troca obrigatória fica desligada. Em production a senha é aleatória, aparece uma vez no terminal e a troca é obrigatória.
@@ -41,6 +40,7 @@ pnpm --filter @starter/web dev
 
 - `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:integration`, `pnpm build`
 - `pnpm format` e `pnpm format:check`
+- `pnpm dev` sobe a API, o worker e o web
 - `pnpm --filter @starter/api start:dev`, `pnpm worker:dev`, `pnpm --filter @starter/web dev`
 - `pnpm infra:up` / `pnpm infra:down` / `pnpm infra:logs` / `pnpm infra:reset`
 - `pnpm keys:generate` [--file <caminho>] / `pnpm keys:rotate <NOME>` [--yes]
