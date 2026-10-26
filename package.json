@@ -19,7 +19,8 @@
     "infra:logs": "docker compose -f compose.dev.yaml logs -f",
     "infra:reset": "docker compose -f compose.dev.yaml down -v",
     "db:seed": "pnpm --filter @starter/api db:seed",
-    "boot:check": "pnpm --filter @starter/scripts boot:check"
+    "boot:check": "pnpm --filter @starter/scripts boot:check",
+    "e2e": "pnpm --filter @starter/web e2e"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
