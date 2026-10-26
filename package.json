@@ -18,7 +18,8 @@
     "infra:down": "docker compose -f compose.dev.yaml down",
     "infra:logs": "docker compose -f compose.dev.yaml logs -f",
     "infra:reset": "docker compose -f compose.dev.yaml down -v",
-    "db:seed": "pnpm --filter @starter/api db:seed"
+    "db:seed": "pnpm --filter @starter/api db:seed",
+    "boot:check": "pnpm --filter @starter/scripts boot:check"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

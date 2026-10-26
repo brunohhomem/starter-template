@@ -17,6 +17,20 @@ jobs:
   verify:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18.1
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U app -d postgres"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -55,6 +69,35 @@ jobs:
 
       - name: Lint, tipos, testes e build
         run: pnpm turbo run lint typecheck test build
+
+      - name: Iniciar Redis com senha
+        run: |
+          docker run -d --name ci-redis-boot -p 6379:6379 redis:8.2.6-bookworm redis-server --requirepass redis
+          timeout 30 sh -c 'until docker exec ci-redis-boot redis-cli -a redis ping 2>/dev/null | grep -q PONG; do sleep 1; done'
+
+      - name: Gerar .env e subir o build de produção
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: app
+          DB_PASSWORD: postgres
+          DB_NAME: app
+          TEST_DB_NAME: app_test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_PASSWORD: redis
+          API_PORT: 3001
+          APP_ORIGIN: http://localhost:3000
+          WEB_ORIGIN: http://localhost:3000
+          ADMIN_EMAIL: admin@example.com
+          LOG_LEVEL: info
+          SWAGGER_ENABLED: true
+          TRUST_PROXY_HOPS: 0
+          NODE_ENV: development
+          MAIL_DRIVER: smtp
+        run: |
+          pnpm --filter @starter/scripts keys:generate
+          pnpm boot:check
 
       - name: Commitlint
         if: github.event_name == 'pull_request'
