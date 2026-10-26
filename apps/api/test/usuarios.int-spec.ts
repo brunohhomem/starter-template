@@ -109,4 +109,38 @@ describe('Usuários (admin)', () => {
 
     expect(res.body).toBeDefined();
   });
+
+  it('Usuário comum tenta mudar o role de outro usuário — 403', async () => {
+    const scenario = makeScenario(app);
+    await scenario.createUser({ email: 'alvo-role@teste.com' });
+    const common = await scenario.createUser({ email: 'comum-role@teste.com' });
+    const adminAgent = await loginAdmin();
+
+    const listRes = await adminAgent.get('/api/users').expect(200);
+    const target = (listRes.body.items as Array<{ id: string; email: string }>).find(
+      (item) => item.email === 'alvo-role@teste.com',
+    );
+    expect(target).toBeDefined();
+
+    const commonAgent = await scenario.loginAs(common);
+    const res = await commonAgent
+      .patch(`/api/users/${target!.id}/role`)
+      .send({ role: 'admin' })
+      .expect(403);
+
+    expect(res.body.code).toBe('AUTH_FORBIDDEN');
+  });
+
+  it('Admin tenta desativar a si mesmo — 422', async () => {
+    const adminAgent = await loginAdmin();
+    const meRes = await adminAgent.get('/api/auth/me').expect(200);
+    const adminId = meRes.body.user.id as string;
+
+    const res = await adminAgent
+      .patch(`/api/users/${adminId}/status`)
+      .send({ isActive: false })
+      .expect(422);
+
+    expect(res.body.code).toBe('USERS_SELF_CHANGE_FORBIDDEN');
+  });
 });
