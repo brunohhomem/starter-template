@@ -219,6 +219,15 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string, res: Response): Promise<AuthUserResponse> {
+    try {
+      return await this.rotateSession(refreshToken, res);
+    } catch (error) {
+      if (error instanceof UnauthorizedException) this.cookieService.clearAuthCookies(res);
+      throw error;
+    }
+  }
+
+  private async rotateSession(refreshToken: string, res: Response): Promise<AuthUserResponse> {
     if (!refreshToken) {
       throw new UnauthorizedException({
         statusCode: 401,

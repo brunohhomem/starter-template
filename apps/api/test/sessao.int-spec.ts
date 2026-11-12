@@ -102,6 +102,87 @@ describe('Sessão', () => {
     expect(res.body.code).toBe('AUTH_REFRESH_INVALID');
   });
 
+  it('Navegador com cookies de sessão estranhos tem os cookies apagados no refresh', async () => {
+    function isClearedCookie(setCookieEntry: string): boolean {
+      return (
+        setCookieEntry.includes('Expires=Thu, 01 Jan 1970') || /Max-Age=0(;|$)/.test(setCookieEntry)
+      );
+    }
+
+    function clearedCookieNames(setCookies: string[]): string[] {
+      return setCookies.filter(isClearedCookie).map((cookie) => cookie.split('=')[0]);
+    }
+
+    // Only a stale access_token, no refresh_token
+    const res1 = await request(app.getHttpServer())
+      .post('/api/auth/refresh')
+      .set('Cookie', ['access_token=jwt-de-outro-projeto'])
+      .expect(401);
+
+    expect(res1.body.code).toBe('AUTH_REFRESH_INVALID');
+    const cleared1 = clearedCookieNames((res1.headers['set-cookie'] ?? []) as string[]);
+    expect(cleared1).toContain('access_token');
+    expect(cleared1).toContain('refresh_token');
+
+    // Both cookies from an unrelated project
+    const res2 = await request(app.getHttpServer())
+      .post('/api/auth/refresh')
+      .set('Cookie', ['access_token=jwt-de-outro-projeto', 'refresh_token=refresh-desconhecido'])
+      .expect(401);
+
+    expect(res2.body.code).toBe('AUTH_REFRESH_INVALID');
+    const cleared2 = clearedCookieNames((res2.headers['set-cookie'] ?? []) as string[]);
+    expect(cleared2).toContain('access_token');
+    expect(cleared2).toContain('refresh_token');
+  });
+
+  it('Cookie de acesso vive o prazo do refresh para a navegação não cair no login', async () => {
+    const scenario = makeScenario(app);
+    const user = await scenario.createUser({ email: 'ttl@teste.com' });
+
+    const loginRes = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: user.email, password: user.password })
+      .expect(200);
+
+    const setCookies = (loginRes.headers['set-cookie'] ?? []) as string[];
+
+    function getMaxAge(name: string): number | null {
+      const entry = setCookies.find((cookie) => cookie.startsWith(name + '='));
+      if (!entry) return null;
+      const match = /Max-Age=(\d+)/i.exec(entry);
+      return match ? parseInt(match[1], 10) : null;
+    }
+
+    const accessMaxAge = getMaxAge('access_token');
+    const refreshMaxAge = getMaxAge('refresh_token');
+
+    expect(accessMaxAge).not.toBeNull();
+    expect(refreshMaxAge).not.toBeNull();
+    expect(accessMaxAge).toBe(refreshMaxAge);
+
+    // Same invariant holds after a refresh rotation
+    const refreshCookie = scenario.cookieFrom(
+      loginRes.headers as Record<string, string | string[]>,
+      'refresh_token',
+    );
+    const rotateRes = await request(app.getHttpServer())
+      .post('/api/auth/refresh')
+      .set('Cookie', [refreshCookie])
+      .expect(200);
+
+    const setCookiesAfter = (rotateRes.headers['set-cookie'] ?? []) as string[];
+
+    function getMaxAgeAfter(name: string): number | null {
+      const entry = setCookiesAfter.find((cookie) => cookie.startsWith(name + '='));
+      if (!entry) return null;
+      const match = /Max-Age=(\d+)/i.exec(entry);
+      return match ? parseInt(match[1], 10) : null;
+    }
+
+    expect(getMaxAgeAfter('access_token')).toBe(getMaxAgeAfter('refresh_token'));
+  });
+
   it('Admin desativa um usuário logado', async () => {
     const scenario = makeScenario(app);
     const user = await scenario.createUser({ email: 'desativar@teste.com' });

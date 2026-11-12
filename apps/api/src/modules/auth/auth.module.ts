@@ -56,7 +56,6 @@ import { PeopleModule } from '../people/people.module';
       useFactory: (env: Env) =>
         new CookieService({
           secure: env.COOKIE_SECURE ?? env.NODE_ENV === 'production',
-          accessTtlMinutes: env.AUTH_ACCESS_TTL_MINUTES,
           refreshTtlDays: env.AUTH_REFRESH_TTL_DAYS,
         }),
       inject: [ENV],
