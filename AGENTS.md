@@ -10,6 +10,7 @@ Este repositório é o template base de um monorepo pnpm. A API é NestJS (`apps
 - `pnpm test:integration`
 - `pnpm build`
 - `pnpm format` e `pnpm format:check`
+- `pnpm dev`
 - `pnpm --filter @starter/api start:dev`
 - `pnpm worker:dev`
 - `pnpm --filter @starter/web dev`

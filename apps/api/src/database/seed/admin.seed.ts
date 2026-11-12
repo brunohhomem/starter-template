@@ -42,10 +42,10 @@ export async function seedAdmin(db: NodePgDatabase): Promise<AdminSeedResult> {
   } else {
     // 2. Gerar/obter senha
     let initialPassword: string;
-    if (isDevelopment) {
-      initialPassword = 'Admin@12345';
-    } else if (env.ADMIN_INITIAL_PASSWORD) {
+    if (env.ADMIN_INITIAL_PASSWORD) {
       initialPassword = env.ADMIN_INITIAL_PASSWORD;
+    } else if (isDevelopment) {
+      initialPassword = 'Admin@12345';
     } else {
       // Gerar 24 caracteres aleatórios (base64url-safe)
       const bytes = randomBytes(18); // 18 bytes = 24 chars base64url

@@ -106,6 +106,7 @@ jobs:
           pnpm exec commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
   integration:
+    needs: [verify]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
@@ -126,7 +127,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: pnpm
         uses: pnpm/action-setup@v6
@@ -194,6 +195,7 @@ jobs:
         run: pnpm turbo run test:integration
 
   e2e:
+    needs: [verify]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
@@ -219,7 +221,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: pnpm
         uses: pnpm/action-setup@v6
@@ -240,6 +242,13 @@ jobs:
           key: turbo-${{ github.sha }}
           restore-keys: |
             turbo-
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('apps/web/package.json') }}
 
       - name: Iniciar Redis com senha
         run: |
@@ -269,6 +278,14 @@ jobs:
           SMTP_PORT: 1025
         run: pnpm --filter @starter/scripts keys:generate
 
+      - name: Instalar Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @starter/web exec playwright install --with-deps chromium
+
+      - name: Instalar deps do sistema para Chromium (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @starter/web exec playwright install-deps chromium
+
       - name: Build de produção
         run: pnpm turbo run build --filter=@starter/api --filter=@starter/web
 
@@ -292,18 +309,7 @@ jobs:
           MAIL_DRIVER: smtp
           SMTP_HOST: localhost
           SMTP_PORT: 1025
-          PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
-        run: |
-          docker run --rm --network host --ipc=host \
-            -v "$GITHUB_WORKSPACE:/work" \
-            -w /work \
-            -e CI -e DB_HOST -e DB_PORT -e DB_USER -e DB_PASSWORD -e DB_NAME \
-            -e REDIS_HOST -e REDIS_PORT -e REDIS_PASSWORD \
-            -e API_PORT -e APP_ORIGIN -e WEB_ORIGIN -e API_ORIGIN -e ADMIN_EMAIL \
-            -e NODE_ENV -e MAIL_DRIVER -e SMTP_HOST -e SMTP_PORT \
-            -e PLAYWRIGHT_BROWSERS_PATH \
-            mcr.microsoft.com/playwright:v1.64.1-noble \
-            bash -lc 'cd /work/apps/web && ./node_modules/.bin/playwright test'
+        run: pnpm e2e
 
       - name: Relatório do Playwright
         if: always()

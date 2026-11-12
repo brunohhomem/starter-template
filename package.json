@@ -25,6 +25,7 @@
     "db:seed": "pnpm --filter @starter/api db:seed",
     "db:studio": "pnpm --filter @starter/api db:studio",
     "test:integration": "pnpm turbo run test:integration",
+    "dev": "node scripts/dev.mjs",
     "worker:dev": "pnpm --filter @starter/api worker:dev",
     "boot:check": "pnpm --filter @starter/scripts boot:check",
     "e2e": "pnpm --filter @starter/web e2e"
