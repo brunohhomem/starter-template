@@ -10,12 +10,17 @@
 
 ## Cookies
 
-| Cookie          | Path        | Duração | Flags                             |
-| --------------- | ----------- | ------- | --------------------------------- |
-| `access_token`  | `/`         | 15 min  | `HttpOnly; SameSite=Lax; Secure`* |
-| `refresh_token` | `/api/auth` | 7 dias  | `HttpOnly; SameSite=Lax; Secure`* |
+| Cookie          | Path        | Duração                 | Flags                             |
+| --------------- | ----------- | ----------------------- | --------------------------------- |
+| `access_token`  | `/`         | `AUTH_REFRESH_TTL_DAYS` | `HttpOnly; SameSite=Lax; Secure`* |
+| `refresh_token` | `/api/auth` | `AUTH_REFRESH_TTL_DAYS` | `HttpOnly; SameSite=Lax; Secure`* |
 
 *`Secure` ativo quando `COOKIE_SECURE=true` (padrão em produção, desativado em dev/teste).
+
+> **Por que `access_token` tem o mesmo prazo do refresh?** O middleware lê apenas o cookie
+> `access_token` para decidir se protege `/app`. Se o cookie expirasse em 15 min, o usuário seria
+> mandado para o login antes de o interceptor ter chance de renovar o JWT. O JWT dentro do cookie
+> continua expirando em `AUTH_ACCESS_TTL_MINUTES`; uma chamada 401 dispara o refresh normalmente.
 
 Limpar cookies = mesmo nome, path e flags com `Max-Age=0`. Sem atributo `Domain` (host-only).
 
