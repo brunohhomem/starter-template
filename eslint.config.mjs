@@ -43,6 +43,8 @@ for (const config of [...baseConfig, ...nestConfig, ...nextConfig]) {
 const processEnvAllowedPaths = [
   'apps/api/src/config/**',
   'packages/scripts/**',
+  // Scripts de orquestração na raiz do monorepo (dev, CI helpers, etc.)
+  'scripts/**',
   'apps/api/drizzle.config.ts',
   // O rewrite do Next é resolvido antes do app. Não há ENV token neste processo.
   'apps/web/next.config.ts',
